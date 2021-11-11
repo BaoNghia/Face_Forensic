@@ -45,3 +45,5 @@ if __name__ == "__main__":
                     data['image'].extend(files)
                     data['class'].extend([label_dict[label]]*len(files))
         df = pd.DataFrame(data)
+    
+    print("create CSV Successfully!!!")
