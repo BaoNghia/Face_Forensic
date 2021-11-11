@@ -1,0 +1,16 @@
+.vscode/
+__pycache__/
+*.ipynb_checkpoints
+.DS_Store
+.venv
+
+# Dataset
+*logs/
+data/*
+!data/example_data
+!data/*.py
+# !data/FaceForensics
+
+#checkpoint
+*.pth
+*.pt
