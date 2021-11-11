@@ -2,12 +2,13 @@ import os, time, logging
 from datetime import datetime
 
 import torch
+from models.PGD import Adversarial
 from utils import callbacks, metrics_loader, general
-from data_loader.dataloader import data_split, get_dataset
+from data_loader.dataloader import get_dataset
 from utils.general import (model_loader,  get_optimizer, get_loss_fn,\
     get_lr_scheduler, yaml_loader)
 import argparse
-import trainer, tester
+import tester, trainer
 
 # from torchsampler import ImbalancedDatasetSampler
 def main(cfg, all_model, log_dir, checkpoint=None):            
@@ -61,8 +62,10 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     # scheduler = CosineAnnealingLR(optimizer, T_max=t_max, eta_min=min_lr)
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
+    # Create Adversarial_model
     model_robust = all_model["model_robust"]
     model_natural = all_model["model_natural"]
+    adversarial_module = Adversarial(model_robust, model_natural, cfg.get("adversarial"))
     
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
@@ -84,18 +87,18 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     for epoch in range(num_epochs):
         t1 = time.time()
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
-        train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device,
-                                                                model_robust, model_natural,
+        train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs,
+                                                                device, adversarial_module,
                                                                 train_loader, train_metrics,
-                                                                criterion, optimizer, cfg
+                                                                criterion, optimizer,
         )
-        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device,
-                                                                model_robust, model_natural,
+        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, adversarial_module,
                                                                 valid_loader, valid_metrics,
                                                                 criterion, train_loss, train_acc,
         )
         scheduler.step(valid_loss)
 
+        print("Valid result: ", valid_result)
         ## log to file 
         logging.info("\n------Epoch {} / {}, Training time: {:.4f} seconds------"\
             .format(epoch, num_epochs, (time.time() - t1)))
@@ -136,13 +139,15 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     # test_model.eval()
 
     # # logging report
-    # report = tester.test_result(test_model, test_loader, device, cfg)
-    # logging.info(f"\nClassification Report: \n {report}")
-    # logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
+    test_model = adversarial_module.model_robust.to(device)
+    test_model.eval()
+    report = tester.test_result(test_model, test_loader, device, cfg)
+    logging.info(f"\nClassification Report: \n {report}")
+    logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
 
-    # print(f"Classification Report: \n {report}")
-    # print("Completed in {:.3f} seconds.".format(time.time() - t0))
-    # print(f"-------- Checkpoints and logs are saved in ``{log_dir}`` --------")
+    print(f"Classification Report: \n {report}")
+    print("Completed in {:.3f} seconds.".format(time.time() - t0))
+    print(f"-------- Checkpoints and logs are saved in ``{log_dir}`` --------")
 
     return checkpoint_path
 

@@ -23,7 +23,7 @@ def test_result(model, test_loader, device, cfg):
         model.eval()
         list_labels = []
         list_preds = []
-
+        
         for inputs, targets in test_loader:
             inputs = inputs.to(device)
             targets = targets.to(device)
@@ -35,7 +35,7 @@ def test_result(model, test_loader, device, cfg):
             probs, preds = torch.max(outputs_softmax.data, dim=-1)
             list_labels.extend(targets.cpu().detach().numpy())
             list_preds.extend(preds.cpu().detach().numpy())
-    return (classification_report(list_labels, list_preds, target_names=cfg["data"]["label_dict"]))
+    return (classification_report(list_labels, list_preds, target_names=cfg["data"]["label_dict"], zero_division = 1))
 
 def test(model, device, test_loader, criterion, test_metrics):
     #validate-the-model

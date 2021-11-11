@@ -51,7 +51,7 @@ def get_lr_scheduler(config):
     return scheduler, cfg
 
 def get_loss_fn(config):
-    loss_dict = config["loss"]
+    loss_dict = config.get("loss")
     try:
         # if the loss function comes from nn package
         criterion = getattr(torch.nn, loss_dict['name'])

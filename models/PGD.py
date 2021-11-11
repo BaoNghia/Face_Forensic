@@ -64,35 +64,46 @@ def squared_l2_norm(x):
 def l2_norm(x):
     return squared_l2_norm(x).sqrt()
 
-def adversarial(model_robust,
-                model_natural,
-                x_natural, 
-                cfg):
-    norm = cfg['adversarial']['norm']
-    norm = np.inf if norm == "np.inf" else int(norm)
-    perturb_steps = cfg['adversarial']['perturb_steps']
-    epsilon = cfg['adversarial']['epsilon']
-    step_size = cfg['adversarial']['step_size']
 
-    # define KL-loss
-    criterion_kl = nn.KLDivLoss(reduction='sum')
-    model_robust.eval()
-    model_natural.eval()
-    # generate adversarial example
-    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
-    for _ in range(perturb_steps):
-        x_adv.requires_grad_()
-        with torch.enable_grad():
-            loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
-                                        F.softmax(model_robust(x_natural), dim=1))
-        grad = torch.autograd.grad(loss_kl, [x_adv])[0]
-        optimal_perturbation = optimize_linear(grad, step_size, norm)
-        x_adv = x_adv.detach() + optimal_perturbation
-        eta_x_adv = x_adv - x_natural
-        eta_x_adv = clip_eta(eta_x_adv, norm, epsilon)
-        x_adv = x_natural + eta_x_adv
+class Adversarial(nn.Module):
+    def __init__(self, mode_robust, model_natural, cfg):
+        super(Adversarial, self).__init__()
+
+        self.norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
+        self.perturb_steps = cfg['perturb_steps']
+        self.epsilon = cfg['epsilon']
+        self.step_size = cfg['step_size']
+        # Create model
+        self.model_robust = mode_robust
+        self.model_natural = model_natural
+        # define KL-loss
+        self. criterion_kl = nn.KLDivLoss(reduction='sum')
+
+    def forward(self, x_natural):
+        self.model_robust.eval()
+        self.model_natural.eval()
+
+        # generate adversarial example
+        eta = torch.zeros_like(x_natural)
+        eta = clip_eta(eta, self.norm, self.epsilon)
+        x_adv = x_natural.detach() + eta
         x_adv = torch.clamp(x_adv, 0.0, 1.0)
 
-    x_adv = Variable(torch.clamp(x_adv, 0.0, 1.0), requires_grad=False)
-    return x_adv
+        for _ in range(self.perturb_steps):
+            x_adv.requires_grad_(True)
+            with torch.enable_grad():
+                loss_kl = self.criterion_kl(F.log_softmax(self.model_robust(x_adv), dim=1),
+                                            F.softmax(self.model_robust(x_natural), dim=1))
+            grad = torch.autograd.grad(loss_kl, [x_adv])[0]
+            optimal_perturbation = optimize_linear(grad, self.step_size, self.norm)
+            x_adv = x_adv.detach() + optimal_perturbation
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+            eta_x_adv = x_adv - x_natural
+            eta_x_adv = clip_eta(eta_x_adv, self.norm, self.epsilon)
+            x_adv = x_natural + eta_x_adv
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+
+        x_adv = Variable(x_adv, requires_grad=False)
+        return x_adv
+            
 
