@@ -1,6 +1,14 @@
 import os, glob
 import argparse
 import pandas as pd
+from sklearn.model_selection import train_test_split
+
+
+def data_split(data, test_size):
+    X = data["image"]
+    y = data["class"]
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size, stratify=y)
+    return x_train, x_test, y_train, y_test
 
 DATASET_PATHS = {
     'original': 'original_sequences/youtube',
@@ -45,5 +53,7 @@ if __name__ == "__main__":
                     data['image'].extend(files)
                     data['class'].extend([label_dict[label]]*len(files))
         df = pd.DataFrame(data)
-    
+
+    print(df['class'].value_counts())
+    df.to_csv("./data/data.csv", index=None)
     print("create CSV Successfully!!!")

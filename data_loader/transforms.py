@@ -11,7 +11,7 @@ import albumentations as albu
 train_transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.RandomResizedCrop(224),
+        transforms.RandomResizedCrop(320),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(hue=.05, saturation=.05),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -22,8 +22,16 @@ train_transform = transforms.Compose(
 val_transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.CenterCrop(320),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ]
+)
+
+test_transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Resize(320),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ]

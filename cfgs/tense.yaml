@@ -10,7 +10,7 @@ data : {
   validation_ratio: 0,
   validation_csv_name : ./data/example_data/test.csv,
   test_csv_name: ./data/example_data/test.csv,
-  label_dict: ["cat", "dog"], # sort by class_id
+  label_dict: ["real", "fake"], # sort by class_id
   batch_size: 4,
 }
 

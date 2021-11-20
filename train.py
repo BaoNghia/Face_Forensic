@@ -148,7 +148,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     print(f"Classification Report: \n {report}")
     print("Completed in {:.3f} seconds.".format(time.time() - t0))
     print(f"-------- Checkpoints and logs are saved in ``{log_dir}`` --------")
-
     return checkpoint_path
 
 
