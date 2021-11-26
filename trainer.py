@@ -3,7 +3,6 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
-from sklearn.metrics import accuracy_score
 
       
 def train_epoch(
@@ -12,7 +11,6 @@ def train_epoch(
         train_loader, train_metrics,
         criterion, optimizer
     ):
-
     model_robust = adversarial_module.model_robust
     model_natural = adversarial_module.model_natural
     # training-the-model
@@ -24,24 +22,28 @@ def train_epoch(
             # move-tensors-to-GPU
             inputs = inputs.to(device)
             targets = targets.to(device)
-            # clear-the-gradients-of-all-optimized-variables
+            # # generate adversarial_sample
+            optimizer.zero_grad()
             x_adv = adversarial_module(inputs)
+            # zero the gradient beforehand
             model_robust.train()
             model_natural.train()
-            # zero the gradient beforehand
             optimizer.zero_grad()
             out_adv = model_robust(x_adv)
             out_natural = model_robust(inputs)
             out_orig = model_natural(inputs)
             # forward model and compute loss
             loss = criterion(out_adv, out_natural, out_orig, targets)
+            
+            # optimizer.zero_grad()
+            # loss = ce(model_robust(inputs),targets)
+            
             loss.backward()
             optimizer.step()
             # update-training-loss
             train_loss += loss.item()
             ## calculate training metrics
             outputs = model_robust(inputs)
-            # outputs = model_robust(inputs)
             outputs_softmax = torch.softmax(outputs, dim=-1)
             probs, preds = torch.max(outputs_softmax.data, dim=-1)
             correct += torch.sum(preds.data == targets.data).item()
@@ -65,7 +67,6 @@ def valid_epoch(
         valid_loader, valid_metrics,
         criterion, train_loss, train_acc,
     ):
-    ce_loss = nn.CrossEntropyLoss()
     model_robust = adversarial_module.model_robust
     model_natural = adversarial_module.model_natural
     #validate-the-model
@@ -82,12 +83,16 @@ def valid_epoch(
             for batch_idx, (inputs, targets) in pbar:
                 inputs = inputs.to(device)
                 targets = targets.to(device)
+                # generate adversarial_sample
+                x_adv = adversarial_module(inputs)
                 # forward model and compute loss
-                outputs = model_robust(inputs)
-                loss = ce_loss(outputs, targets)
-                # update-validation-loss
+                out_adv = model_robust(x_adv)
+                out_natural = model_robust(inputs)
+                out_orig = model_natural(inputs)
+                loss = criterion(out_adv, out_natural, out_orig, targets)
                 valid_loss += loss.item()
                 ## calculate training metrics
+                outputs = model_robust(inputs)
                 outputs_softmax = torch.softmax(outputs, dim=-1)
                 probs, preds = torch.max(outputs_softmax.data, dim=-1)
                 correct += torch.sum(preds.data == targets.data).item()

@@ -6,12 +6,12 @@ session: {
 
 data : {
   data.class: data_loader.Classify.ClassificationDataset,
-  data_csv_name: ./data/example_data/train.csv,
+  data_csv_name: ./data/csv/train.csv,
   validation_ratio: 0,
-  validation_csv_name : ./data/example_data/test.csv,
-  test_csv_name: ./data/example_data/test.csv,
+  validation_csv_name : ./data/csv/valid.csv,
+  test_csv_name: ./data/csv/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 4,
+  batch_size: 8,
 }
 
 model_natural: {
@@ -22,8 +22,8 @@ model_natural: {
 }
 
 model_robust: {
-  model.class: models.resnet_transfer.resnet.ResNet_transfer,
-  model_name: resnet50,
+  model.class: models.wideresnet.wresnet.WideResNet_transfer,
+  model_name: wide_resnet50_2,
   num_class: 2,
   pretrained: true,
 }
@@ -34,6 +34,7 @@ model_robust: {
 optimizer: {
   name: Adam,
   lr: 5e-4,
+  weight_decay: 2e-4,
 }
 
 # configure arguments of torch.optim.lr_scheduler 
@@ -57,6 +58,7 @@ adversarial: {
 
 loss: {
   name: LBGATLoss,
+  weight: [4,1],
   beta: 1,
 }
 

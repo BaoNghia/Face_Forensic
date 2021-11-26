@@ -9,6 +9,7 @@ __pycache__/
 data/*
 !data/example_data
 !data/*.py
+!data/csv
 # !data/FaceForensics
 
 #checkpoint

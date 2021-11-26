@@ -36,13 +36,27 @@ def get_optimizer(config):
     del cfg['name']
     return optimizer, cfg
 
+def adjust_learning_rate(optimizer, epoch, init_lr):
+    """decrease the learning rate"""
+    lr = init_lr
+    if epoch==1:
+       lr=0.02
+    if epoch >= 76:
+        lr = init_lr * 0.1
+    if epoch >= 91:
+        lr = init_lr * 0.01
+    if epoch >= 101:
+        lr = init_lr * 0.001
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
 def get_lr_scheduler(config):
     cfg = config.get("scheduler")
     scheduler_name = cfg["name"]
     try:
         # if the lr_scheduler comes from torch.optim.lr_scheduler package
-        scheduler = getattr(torch.optim.lr_scheduler, scheduler_name,\
-            "The scheduler {} is not available".format(scheduler_name))
+        scheduler = getattr(torch.optim.lr_scheduler, scheduler_name)
     except:
         # use custom loss
         scheduler = getattr(torch.optim.lr_scheduler, scheduler_name,\
@@ -71,6 +85,14 @@ def make_dir_epoch_time(base_path, session_name, time_str):
     new_path = os.path.join(base_path, session_name + "_" + time_str)
     os.makedirs(new_path, exist_ok=True)
     return new_path
+
+def save_last_checkpoint(checkpoint, log_dir, epoch):
+    cp_path = os.path.join(log_dir, f"last_epoch{epoch}.ckpt")
+    torch.save(checkpoint, cp_path)
+
+def save_best_checkpoint(checkpoint, log_dir, epoch):
+    cp_path = os.path.join(log_dir, "best.ckpt")
+    torch.save(checkpoint, cp_path)
 
 def yaml_loader(yaml_file):
     loader = yaml.SafeLoader

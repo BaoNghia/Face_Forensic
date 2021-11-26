@@ -1,12 +1,14 @@
 import os, time, logging
 from datetime import datetime
+import numpy as np
 
 import torch
+import torch.nn as nn
 from models.PGD import Adversarial
 from utils import callbacks, metrics_loader, general
 from data_loader.dataloader import get_dataset
 from utils.general import (model_loader,  get_optimizer, get_loss_fn,\
-    get_lr_scheduler, yaml_loader)
+    get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
 import argparse
 import tester, trainer
 
@@ -23,9 +25,9 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
-    all_model = {name: model.to(device) for name, model in all_model.items()}
+    all_model = {name: nn.DataParallel(model).to(device) for name, model in all_model.items()}
     num_parameter = {name: sum(p.numel() for p in model.parameters()) for name, model in all_model.items()}
-    # logging.info(f"Number parameters of model: {num_parameter}")
+    logging.info(f"Number parameters of model: {num_parameter}")
 
     # using parsed configurations to create a dataset
     # Create dataset
@@ -63,9 +65,9 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
     # Create Adversarial_model
-    model_robust = all_model["model_robust"]
-    model_natural = all_model["model_natural"]
-    adversarial_module = Adversarial(model_robust, model_natural, cfg.get("adversarial"))
+    adversarial_module = Adversarial(all_model["model_robust"], 
+                                    all_model["model_natural"], 
+                                    cfg.get("adversarial"))
     
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
@@ -74,7 +76,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     # initialize the early_stopping object
     save_mode = cfg["train"]["mode"]
     early_patience = cfg["train"]["patience"]
-    checkpoint_path = os.path.join(log_dir, "Checkpoint.ckpt")
+    checkpoint_path = os.path.join(log_dir, "best.ckpt")
     early_stopping = callbacks.EarlyStopping(patience=early_patience,
                                             mode = save_mode, 
                                             delta = 0,
@@ -84,6 +86,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     logging.info("--"*50)
     num_epochs = int(cfg["train"]["num_epochs"])
     t0 = time.time()
+    best_valid_lost = np.inf
     for epoch in range(num_epochs):
         t1 = time.time()
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
@@ -116,10 +119,15 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         train_checkpoint = {
             'epoch': epoch,
             'valid_loss': valid_loss,
-            'model': model_robust,
-            'state_dict': model_robust.state_dict(),
+            'model': adversarial_module.model_robust,
+            'state_dict': adversarial_module.model_robust.state_dict(),
             'optimizer': optimizer.state_dict(),
         }
+        if valid_loss < best_valid_lost:
+            best_valid_lost = valid_loss
+            save_best_checkpoint(train_checkpoint, log_dir, epoch)
+        
+        save_last_checkpoint(train_checkpoint, log_dir, epoch)
 
         # if save_mode == "min":
         #     early_stopping(valid_loss, train_checkpoint)
