@@ -87,7 +87,7 @@ def make_dir_epoch_time(base_path, session_name, time_str):
     return new_path
 
 def save_last_checkpoint(checkpoint, log_dir, epoch):
-    cp_path = os.path.join(log_dir, f"last_epoch{epoch}.ckpt")
+    cp_path = os.path.join(log_dir, f"last.ckpt")
     torch.save(checkpoint, cp_path)
 
 def save_best_checkpoint(checkpoint, log_dir, epoch):

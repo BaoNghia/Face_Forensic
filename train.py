@@ -180,10 +180,11 @@ if __name__ == "__main__":
     ## create logger
     tb_writer = general.make_writer(log_dir = log_dir)
     text_logger = general.log_initilize(log_dir)
+    print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
     logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
     logging.info(f"Project name: {project_name}")
     logging.info(f"CONFIGS: \n {config}")
-    
+
     ## Create model
     all_model = model_loader(config)
     print("Create model Successfully !!!")

@@ -11,7 +11,7 @@ data : {
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 8,
+  batch_size: 12,
 }
 
 model_natural: {
@@ -33,7 +33,7 @@ model_robust: {
 # Do not modify this key (eg. "name": SGD)
 optimizer: {
   name: Adam,
-  lr: 5e-4,
+  lr: 1e-2,
   weight_decay: 2e-4,
 }
 
@@ -42,9 +42,9 @@ optimizer: {
 # Do not modify this key (eg. "name": CosineAnnealingLR)
 scheduler: {
   name: ReduceLROnPlateau,
-  min_lr: 1e-5,
+  min_lr: 1e-4,
   mode: min,
-  patience: 3,
+  patience: 10,
   factor: 0.1,
 }
 
@@ -64,7 +64,7 @@ loss: {
 
 # Support sklearn metrics or custom metrics
 train: {
-  num_epochs: 20,
+  num_epochs: 100,
   metrics: ["accuracy_score", "f1_score"],
   # EarlyStopping
   patience: 5,
