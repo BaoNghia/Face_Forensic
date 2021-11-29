@@ -33,7 +33,6 @@ class ImbalancedDatasetSampler(Sampler):
 
     def _get_label(self, dataset, idx):
         return dataset[idx][1].item()
-        # return dataset[idx]['truth'].item()
                 
     def __iter__(self):
         rand_tensor = torch.multinomial(self.weights, self.num_samples, replacement=True)

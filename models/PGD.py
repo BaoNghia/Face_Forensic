@@ -68,7 +68,6 @@ def l2_norm(x):
 class Adversarial(nn.Module):
     def __init__(self, mode_robust, model_natural, cfg):
         super(Adversarial, self).__init__()
-
         self.norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
         self.perturb_steps = cfg['perturb_steps']
         self.epsilon = cfg['epsilon']

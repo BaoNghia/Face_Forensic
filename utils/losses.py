@@ -11,6 +11,7 @@ def one_hot(labels, num_classes):
     return one_hot.scatter_(1, labels.unsqueeze(1), 1.0)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class LBGATLoss(nn.Module):
     def __init__(self, weight = None, beta=1.0):
         super(LBGATLoss, self).__init__()

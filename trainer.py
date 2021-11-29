@@ -34,10 +34,7 @@ def train_epoch(
             out_orig = model_natural(inputs)
             # forward model and compute loss
             loss = criterion(out_adv, out_natural, out_orig, targets)
-            
-            # optimizer.zero_grad()
-            # loss = ce(model_robust(inputs),targets)
-            
+                  
             loss.backward()
             optimizer.step()
             # update-training-loss
