@@ -105,12 +105,12 @@ class Adversarial(nn.Module):
         x_adv = Variable(x_adv, requires_grad=False)
         return x_adv
             
-def generate_adversarial(model_robust, x_natural, cfg):
+def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
-    criterion_kl = nn.KLDivLoss(size_average=False)
+    # criterion_kl = nn.KLDivLoss(reduction='sum')
 
     model_robust.eval()
     # generate adversarial example

@@ -17,13 +17,14 @@ def train_epoch(
         train_loss = 0
         mloss = 0
         correct = 0
+        criterion_kl = nn.KLDivLoss(reduction='sum')
         for batch_idx, (inputs, targets) in pbar:
             # move-tensors-to-GPU
             inputs = inputs.to(device)
             targets = targets.to(device)
             # # generate adversarial_sample
             optimizer.zero_grad()
-            x_adv = generate_adversarial(model_robust, inputs, cfg)
+            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg)
             # zero the gradient beforehand
             model_robust.train()
             model_natural.train()
