@@ -112,8 +112,7 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     step_size = cfg['step_size']
     # criterion_kl = nn.KLDivLoss(reduction='sum')
 
-    model_robust.eval()
-    # generate adversarial example
+    ## generate adversarial example
     # eta = torch.zeros_like(x_natural)
     eta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
     eta = clip_eta(eta, norm, epsilon)

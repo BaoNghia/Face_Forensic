@@ -12,31 +12,32 @@ def train_epoch(
         train_loader, train_metrics,
         criterion, optimizer, cfg
     ):
-    # training-the-model
+    ## training-the-model
     with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
         train_loss = 0
         mloss = 0
         correct = 0
         criterion_kl = nn.KLDivLoss(reduction='sum')
         for batch_idx, (inputs, targets) in pbar:
-            # move-tensors-to-GPU
+            ## move-tensors-to-GPU
             inputs = inputs.to(device)
             targets = targets.to(device)
-            # # generate adversarial_sample
+            ## generate adversarial_sample
+            model_robust.eval()
             optimizer.zero_grad()
             x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg)
-            # zero the gradient beforehand
+            ## zero the gradient beforehand
             model_robust.train()
             model_natural.train()
             optimizer.zero_grad()
             out_adv = model_robust(x_adv)
             out_natural = model_robust(inputs)
             out_orig = model_natural(inputs)
-            # forward model and compute loss
+            ## forward model and compute loss
             loss = criterion(out_adv, out_natural, out_orig, targets)
             loss.backward()
             optimizer.step()
-            # update-training-loss
+            ## update-training-loss
             train_loss += loss.item()
             ## calculate training metrics
             outputs = model_robust(inputs)

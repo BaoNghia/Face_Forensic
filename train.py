@@ -7,10 +7,30 @@ import torch.nn as nn
 from models.PGD import Adversarial
 from utils import callbacks, metrics_loader, general
 from data_loader.dataloader import get_dataset
-from utils.general import (model_loader,  get_optimizer, get_loss_fn,\
-    get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
+from utils.general import (model_loader,  get_optimizer, get_loss_fn, yaml_loader,
+    get_lr_scheduler, adjust_learning_rate, save_best_checkpoint, save_last_checkpoint)
 import argparse
 import tester, trainer
+
+
+def get_dataloader():
+    # setup data loader
+    from torchvision import datasets, transforms
+    transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+    ])
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    batch_size = 512
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+    trainset = datasets.CIFAR100(root='./data/cifar100', train=True, download=True, transform=transform_train)
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, **kwargs)
+    testset = datasets.CIFAR100(root='./data/cifar100', train=False, download=True, transform=transform_test)
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
+    return train_loader, test_loader
 
 # from torchsampler import ImbalancedDatasetSampler
 def main(cfg, all_model, log_dir, checkpoint=None):            
@@ -46,12 +66,14 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     )
     print("Dataset and Dataloaders created")
 
-    # create a metric for evaluating
+    ## create a metric for evaluating
     metric_names = cfg["train"]["metrics"]
     train_metrics = metrics_loader.Metrics(metric_names)
     valid_metrics = metrics_loader.Metrics(metric_names)
     print("Metrics implemented successfully")
-
+    ## load model
+    model_robust = all_model["model_robust"]
+    model_natural = all_model["model_natural"]
     ## read settings from json file
     ## initlize optimizer from config
     ## optimizer
@@ -61,14 +83,11 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## initlize sheduler from config
     scheduler_module, scheduler_params = get_lr_scheduler(cfg)
     scheduler = scheduler_module(optimizer, **scheduler_params)
-    # scheduler = CosineAnnealingLR(optimizer, T_max=t_max, eta_min=min_lr)
+
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
-    # Create Adversarial_model
-    adversarial_module = Adversarial(all_model["model_robust"], 
-                                    all_model["model_natural"], 
-                                    cfg.get("adversarial"))
-    
+
+
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
     print("Beginning training...")
@@ -83,23 +102,27 @@ def main(cfg, all_model, log_dir, checkpoint=None):
                                             path = checkpoint_path)
     
     # training models
+    train_loader, valid_loader = get_dataloader()
     logging.info("--"*50)
     num_epochs = int(cfg["train"]["num_epochs"])
     t0 = time.time()
     best_valid_lost = np.inf
+
     for epoch in range(num_epochs):
         t1 = time.time()
+        # optimizer = adjust_learning_rate(optimizer, epoch)
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
-        train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs,
-                                                                device, adversarial_module,
+        train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
+                                                                model_robust, model_natural,
                                                                 train_loader, train_metrics,
-                                                                criterion, optimizer,
+                                                                criterion, optimizer, cfg
         )
-        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, adversarial_module,
-                                                                valid_loader, valid_metrics,
-                                                                criterion, train_loss, train_acc,
+        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_natural,
+                                                                valid_loader, valid_metrics, criterion,
+                                                                cfg, train_loss, train_acc,
         )
         scheduler.step(valid_loss)
+
 
         print("Valid result: ", valid_result)
         ## log to file 
@@ -116,18 +139,18 @@ def main(cfg, all_model, log_dir, checkpoint=None):
             tb_writer.add_scalar(f"Validation {metric_name}", valid_result[metric_name], epoch)
         
         # Save model
-        train_checkpoint = {
+        robust_checkpoint = {
             'epoch': epoch,
             'valid_loss': valid_loss,
-            'model': adversarial_module.model_robust,
-            'state_dict': adversarial_module.model_robust.state_dict(),
+            'model': model_robust,
+            'state_dict': model_robust.state_dict(),
             'optimizer': optimizer.state_dict(),
         }
+        save_last_checkpoint(robust_checkpoint, log_dir, name = "robust")
         if valid_loss < best_valid_lost:
             best_valid_lost = valid_loss
-            save_best_checkpoint(train_checkpoint, log_dir, epoch)
+            save_best_checkpoint(robust_checkpoint, log_dir, name = "robust")
         
-        save_last_checkpoint(train_checkpoint, log_dir, epoch)
 
         # if save_mode == "min":
         #     early_stopping(valid_loss, train_checkpoint)
@@ -147,9 +170,10 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     # test_model.eval()
 
     # # logging report
-    test_model = adversarial_module.model_robust.to(device)
+    test_model = model_robust.to(device)
     test_model.eval()
-    report = tester.test_result(test_model, test_loader, device, cfg)
+    # report = tester.test_result(test_model, test_loader, device, cfg)
+    report = tester.test_result(test_model, valid_loader, device, cfg)
     logging.info(f"\nClassification Report: \n {report}")
     logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
 

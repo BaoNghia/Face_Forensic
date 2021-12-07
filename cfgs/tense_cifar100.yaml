@@ -32,8 +32,9 @@ model_robust: {
 # You can add other arguments for the Optimizer
 # Do not modify this key (eg. "name": SGD)
 optimizer: {
-  name: Adam,
-  lr: 1e-1,
+  name: SGD,
+  lr: 1e-2,
+  momentum: 0.9,
   weight_decay: 2e-4,
 }
 
@@ -51,7 +52,7 @@ scheduler: {
 # Support sklearn metrics or custom metrics
 adversarial: {
   perturb_steps: 10,
-  step_size: 0.003,
+  step_size: 0.007,
   epsilon: 0.031,
   norm: np.inf,
 }
