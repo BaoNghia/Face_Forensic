@@ -25,7 +25,7 @@ def train_epoch(
             ## generate adversarial_sample
             model_robust.eval()
             optimizer.zero_grad()
-            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg)
+            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, device, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
             model_natural.train()
@@ -72,14 +72,14 @@ def valid_epoch(
             valid_loss = 0
             all_labels = []
             all_preds = []
-            
+            criterion_kl = nn.KLDivLoss(reduction='sum')
             model_natural.eval()
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                x_adv = generate_adversarial(model_robust, inputs, cfg)
+                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, device, cfg.get("adversarial"))
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)

@@ -7,8 +7,8 @@ import torch.nn as nn
 from models.PGD import Adversarial
 from utils import callbacks, metrics_loader, general
 from data_loader.dataloader import get_dataset
-from utils.general import (model_loader,  get_optimizer, get_loss_fn, yaml_loader,
-    get_lr_scheduler, adjust_learning_rate, save_best_checkpoint, save_last_checkpoint)
+from utils.general import (model_loader,  get_optimizer, get_loss_fn,\
+    get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
 import argparse
 import tester, trainer
 
@@ -17,18 +17,18 @@ def get_dataloader():
     # setup data loader
     from torchvision import datasets, transforms
     transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5),
+                             (0.5, 0.5, 0.5))
     ])
     transform_test = transforms.Compose([
         transforms.ToTensor(),
     ])
     batch_size = 512
     kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-    trainset = datasets.CIFAR100(root='./data/cifar100', train=True, download=True, transform=transform_train)
+    trainset = datasets.CIFAR10(root='./data/cifar10', train=True, download=True, transform=transform_train)
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, **kwargs)
-    testset = datasets.CIFAR100(root='./data/cifar100', train=False, download=True, transform=transform_test)
+    testset = datasets.CIFAR10(root='./data/cifar10', train=False, download=True, transform=transform_test)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
     return train_loader, test_loader
 
@@ -66,14 +66,12 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     )
     print("Dataset and Dataloaders created")
 
-    ## create a metric for evaluating
+    # create a metric for evaluating
     metric_names = cfg["train"]["metrics"]
     train_metrics = metrics_loader.Metrics(metric_names)
     valid_metrics = metrics_loader.Metrics(metric_names)
     print("Metrics implemented successfully")
-    ## load model
-    model_robust = all_model["model_robust"]
-    model_natural = all_model["model_natural"]
+
     ## read settings from json file
     ## initlize optimizer from config
     ## optimizer
@@ -83,16 +81,18 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## initlize sheduler from config
     scheduler_module, scheduler_params = get_lr_scheduler(cfg)
     scheduler = scheduler_module(optimizer, **scheduler_params)
-
+    ## get Loss function
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
-
+    ## load model
+    model_robust = all_model["model_robust"]
+    model_natural = all_model["model_natural"]
 
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
     print("Beginning training...")
 
-    # initialize the early_stopping object
+    ## initialize the early_stopping object
     save_mode = cfg["train"]["mode"]
     early_patience = cfg["train"]["patience"]
     checkpoint_path = os.path.join(log_dir, "best.ckpt")
@@ -110,7 +110,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
     for epoch in range(num_epochs):
         t1 = time.time()
-        # optimizer = adjust_learning_rate(optimizer, epoch)
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
                                                                 model_robust, model_natural,
@@ -185,7 +184,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-c', '--configure', default='cfgs/tense.yaml', help='YAML file')
+    parser.add_argument('-c', '--configure', default='cfgs/tense_cifar10.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint

@@ -105,16 +105,16 @@ class Adversarial(nn.Module):
         x_adv = Variable(x_adv, requires_grad=False)
         return x_adv
             
-def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
+def generate_adversarial(model_robust, x_natural, criterion_kl, device, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
-    # criterion_kl = nn.KLDivLoss(reduction='sum')
 
     ## generate adversarial example
     # eta = torch.zeros_like(x_natural)
-    eta = 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    # eta = (0.001 * torch.randn(x_natural.shape).detach()).to(device)
+    eta = torch.zeros_like(x_natural).uniform_(-epsilon, epsilon)
     eta = clip_eta(eta, norm, epsilon)
     x_adv = x_natural.detach() + eta
     x_adv = torch.clamp(x_adv, 0.0, 1.0)
