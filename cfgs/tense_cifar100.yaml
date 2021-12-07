@@ -1,7 +1,7 @@
 session: {
   _comment_: exp1,
   save_path: ./logs,
-  project_name : Face_Forensic,
+  project_name : CIFAR100,
 }
 
 data : {

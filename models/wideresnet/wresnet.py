@@ -4,7 +4,6 @@ import sys
 import os
 import torch
 
-
 def load_wideresnet(name, num_class = 2, pretrained = True):
     if not name in ['wide_resnet50_2', 'wide_resnet101_2']:
         raise ValueError("name must be in {'wide_resnet50_2', 'wide_resnet101_2'}")
@@ -33,4 +32,3 @@ class WideResNet_transfer(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-    

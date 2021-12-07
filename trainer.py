@@ -3,16 +3,15 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
+from models.PGD import generate_adversarial
 
       
 def train_epoch(
-        epoch, num_epochs,
-        device, adversarial_module,
+        epoch, num_epochs, device,
+        model_robust, model_natural,
         train_loader, train_metrics,
-        criterion, optimizer
+        criterion, optimizer, cfg
     ):
-    model_robust = adversarial_module.model_robust
-    model_natural = adversarial_module.model_natural
     # training-the-model
     with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
         train_loss = 0
@@ -24,7 +23,7 @@ def train_epoch(
             targets = targets.to(device)
             # # generate adversarial_sample
             optimizer.zero_grad()
-            x_adv = adversarial_module(inputs)
+            x_adv = generate_adversarial(model_robust, inputs, cfg)
             # zero the gradient beforehand
             model_robust.train()
             model_natural.train()
@@ -34,7 +33,6 @@ def train_epoch(
             out_orig = model_natural(inputs)
             # forward model and compute loss
             loss = criterion(out_adv, out_natural, out_orig, targets)
-                  
             loss.backward()
             optimizer.step()
             # update-training-loss
@@ -53,19 +51,17 @@ def train_epoch(
             pbar.set_description(s)
             pbar.set_postfix(lr = optimizer.param_groups[0]['lr'])
 
-        train_loss = train_loss/len(train_loader.dataset)
-        train_acc = correct/len(train_loader.dataset)
+        train_loss = train_loss/len(train_loader)
+        train_acc = correct/len(train_loader)
 
     return train_loss, train_acc, train_metrics.epoch()
         
     
 def valid_epoch(
-        device, adversarial_module,
+        device, model_robust, model_natural,
         valid_loader, valid_metrics,
-        criterion, train_loss, train_acc,
+        criterion, cfg, train_loss, train_acc
     ):
-    model_robust = adversarial_module.model_robust
-    model_natural = adversarial_module.model_natural
     #validate-the-model
     with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
         pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
@@ -81,7 +77,7 @@ def valid_epoch(
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                x_adv = adversarial_module(inputs)
+                x_adv = generate_adversarial(model_robust, inputs, cfg)
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)
@@ -97,8 +93,8 @@ def valid_epoch(
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())
 
-        valid_loss = valid_loss/len(valid_loader.dataset)
-        valid_acc = correct/len(valid_loader.dataset)
+        valid_loss = valid_loss/len(valid_loader)
+        valid_acc = correct/len(valid_loader)
         valid_metrics.step(all_labels, all_preds)
 
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))

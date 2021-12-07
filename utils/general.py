@@ -86,12 +86,12 @@ def make_dir_epoch_time(base_path, session_name, time_str):
     os.makedirs(new_path, exist_ok=True)
     return new_path
 
-def save_last_checkpoint(checkpoint, log_dir, epoch):
-    cp_path = os.path.join(log_dir, f"last.ckpt")
+def save_last_checkpoint(checkpoint, log_dir, name):
+    cp_path = os.path.join(log_dir, f"{name}_last.ckpt")
     torch.save(checkpoint, cp_path)
 
-def save_best_checkpoint(checkpoint, log_dir, epoch):
-    cp_path = os.path.join(log_dir, "best.ckpt")
+def save_best_checkpoint(checkpoint, log_dir, name):
+    cp_path = os.path.join(log_dir, f"{name}_best.ckpt")
     torch.save(checkpoint, cp_path)
 
 def yaml_loader(yaml_file):
