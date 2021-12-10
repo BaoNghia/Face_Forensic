@@ -11,21 +11,23 @@ data : {
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 12,
+  batch_size: 256,
 }
 
 model_natural: {
-  model.class: models.resnet_transfer.resnet.ResNet_transfer,
-  model_name: resnet50,
-  num_class: 100,
-  pretrained: true,
+  model.class: models.resnetcifar.ResNet18_cifar,
+  num_classes: 100,
 }
 
 model_robust: {
-  model.class: models.wideresnet.wresnet.WideResNet_transfer,
-  model_name: wide_resnet50_2,
-  num_class: 100,
-  pretrained: true,
+  model.class: models.wideresnetcifar.WideResNet,
+  num_classes: 100,
+}
+
+loss: {
+  name: LBGATLoss,
+  weight: [4,1],
+  beta: 1,
 }
 
 # configure arguments of torch.optim.Optimizer
@@ -49,18 +51,11 @@ scheduler: {
   factor: 0.1,
 }
 
-# Support sklearn metrics or custom metrics
 adversarial: {
   perturb_steps: 10,
   step_size: 0.007,
   epsilon: 0.031,
   norm: np.inf,
-}
-
-loss: {
-  name: LBGATLoss,
-  weight: [4,1],
-  beta: 1,
 }
 
 # Support sklearn metrics or custom metrics

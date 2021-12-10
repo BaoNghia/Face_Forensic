@@ -120,7 +120,7 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, device, cfg):
     x_adv = torch.clamp(x_adv, 0.0, 1.0)
 
     for _ in range(perturb_steps):
-        x_adv.requires_grad_()
+        x_adv.requires_grad_(mode=True)
         with torch.enable_grad():
             loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
                                         F.softmax(model_robust(x_natural), dim=1))

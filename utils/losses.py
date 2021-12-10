@@ -12,7 +12,7 @@ def one_hot(labels, num_classes):
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class LBGATLoss(nn.Module):
-    def __init__(self, weight = None, beta=1.0):
+    def __init__(self, weight = None, beta=1.0, **kwargs):
         super(LBGATLoss, self).__init__()
         self.beta = beta
         self.criterion_kl = nn.KLDivLoss(reduction='sum')

@@ -23,8 +23,8 @@ def train_epoch(
             inputs = inputs.to(device)
             targets = targets.to(device)
             ## generate adversarial_sample
+            # optimizer.zero_grad()
             model_robust.eval()
-            optimizer.zero_grad()
             x_adv = generate_adversarial(model_robust, inputs, criterion_kl, device, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()

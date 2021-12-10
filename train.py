@@ -13,7 +13,7 @@ import argparse
 import tester, trainer
 
 
-def get_dataloader():
+def cifar100_dataloader():
     # setup data loader
     from torchvision import datasets, transforms
     transform_train = transforms.Compose([
@@ -102,12 +102,12 @@ def main(cfg, all_model, log_dir, checkpoint=None):
                                             path = checkpoint_path)
     
     # training models
-    train_loader, valid_loader = get_dataloader()
     logging.info("--"*50)
     num_epochs = int(cfg["train"]["num_epochs"])
     t0 = time.time()
     best_valid_lost = np.inf
 
+    train_loader, valid_loader = cifar100_dataloader()
     for epoch in range(num_epochs):
         t1 = time.time()
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
