@@ -11,26 +11,7 @@ from utils.general import (model_loader,  get_optimizer, get_loss_fn,\
     get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
 import argparse
 import tester, trainer
-
-
-def cifar100_dataloader():
-    # setup data loader
-    from torchvision import datasets, transforms
-    transform_train = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5),
-                             (0.5, 0.5, 0.5))
-    ])
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-    ])
-    batch_size = 512
-    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-    trainset = datasets.CIFAR10(root='./data/cifar10', train=True, download=True, transform=transform_train)
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, **kwargs)
-    testset = datasets.CIFAR10(root='./data/cifar10', train=False, download=True, transform=transform_test)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
-    return train_loader, test_loader
+from data_loader.cifar_dataloader import cifar10_dataloader, cifar100_dataloader
 
 # from torchsampler import ImbalancedDatasetSampler
 def main(cfg, all_model, log_dir, checkpoint=None):            
@@ -39,30 +20,32 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         checkpoint = torch.load(checkpoint)
         all_model = {name: model.load_state_dict(checkpoint['state_dict']) for name, model in all_model.items()}
         print("...Checkpoint loaded")
+    else:
+        print("Train from scratch")
 
     # Checking cuda
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
-    all_model = {name: nn.DataParallel(model).to(device) for name, model in all_model.items()}
-    num_parameter = {name: sum(p.numel() for p in model.parameters()) for name, model in all_model.items()}
-    logging.info(f"Number parameters of model: {num_parameter}")
+    model_robust = nn.DataParallel(all_model["model_robust"]).to(device)
+    model_natural = nn.DataParallel(all_model["model_natural"]).to(device)
 
     # using parsed configurations to create a dataset
     # Create dataset
     num_of_class = len(cfg["data"]["label_dict"])
     train_set, valid_set, test_set = get_dataset(cfg)
     # Dataloader
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     batch_size = int(cfg["data"]["batch_size"])
     train_loader = torch.utils.data.DataLoader(
-		train_set, batch_size=batch_size, shuffle=True
+		train_set, batch_size=batch_size, shuffle=True, **kwargs
     )
     valid_loader = torch.utils.data.DataLoader(
-		valid_set, batch_size=batch_size, shuffle=False
+		valid_set, batch_size=batch_size, shuffle=False, **kwargs
     )
     test_loader = torch.utils.data.DataLoader(
-		test_set, batch_size=32, shuffle=False
+		test_set, batch_size=batch_size, shuffle=False, **kwargs
     )
     print("Dataset and Dataloaders created")
 
@@ -76,7 +59,8 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## initlize optimizer from config
     ## optimizer
     optimizer_module, optimizer_params = get_optimizer(cfg)
-    parameters = [{"params": model.parameters()} for name, model in all_model.items()]
+    # parameters = [{"params": model.parameters()} for name, model in all_model.items()]
+    parameters = [{'params': model_robust.parameters()}, {'params': model_natural.parameters()}]
     optimizer = optimizer_module(parameters, **optimizer_params)
     ## initlize sheduler from config
     scheduler_module, scheduler_params = get_lr_scheduler(cfg)
@@ -84,9 +68,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## get Loss function
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
-    ## load model
-    model_robust = all_model["model_robust"]
-    model_natural = all_model["model_natural"]
 
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
@@ -107,7 +88,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     t0 = time.time()
     best_valid_lost = np.inf
 
-    train_loader, valid_loader = cifar100_dataloader()
+    train_loader, valid_loader = cifar100_dataloader(cfg)
     for epoch in range(num_epochs):
         t1 = time.time()
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
@@ -184,7 +165,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-c', '--configure', default='cfgs/tense_cifar10.yaml', help='YAML file')
+    parser.add_argument('-c', '--configure', default='cfgs/tense_cifar100.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint
@@ -212,6 +193,7 @@ if __name__ == "__main__":
     all_model = model_loader(config)
     print("Create model Successfully !!!")
     num_parameter = {name: sum(p.numel() for p in model.parameters()) for name, model in all_model.items()}
+    logging.info(f"Number parameters of model: {num_parameter}")
     print(f"Number parameters of model: {num_parameter}")
     # time.sleep(1.8)
 

@@ -11,7 +11,7 @@ data : {
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 256,
+  batch_size: 128,
 }
 
 model_natural: {
@@ -47,7 +47,7 @@ scheduler: {
   name: ReduceLROnPlateau,
   min_lr: 1e-4,
   mode: min,
-  patience: 10,
+  patience: 15,
   factor: 0.1,
 }
 

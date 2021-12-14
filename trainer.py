@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
 from models.PGD import generate_adversarial
+from utils.general import convert_size
 
       
 def train_epoch(
@@ -47,7 +48,7 @@ def train_epoch(
             train_metrics.step(targets.cpu().detach().numpy(), preds.cpu().detach().numpy())
 
             ## pbar
-            mem = '%.3g GB' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
+            mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
             mloss = (mloss * batch_idx + loss.item())/(batch_idx + 1)
             s = ('%13s' * 2 + '%13.4g' * 1) % ('%g/%g' % (epoch, num_epochs - 1), mem, mloss)
             pbar.set_description(s)
