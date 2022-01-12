@@ -12,25 +12,25 @@ def one_hot(labels, num_classes):
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class LBGATLoss(nn.Module):
-    def __init__(self, weight = None, beta=1.0, **kwargs):
+    def __init__(self, weight = None, alpha=1.0, **kwargs):
         super(LBGATLoss, self).__init__()
-        self.beta = beta
+        self.alpha = alpha
         self.criterion_kl = nn.KLDivLoss(reduction='sum')
         self.mse = nn.MSELoss()
         # self.fl = FocalLoss(weight = weight, gamma=2, reduction = 'none')
-        self.ce = nn.CrossEntropyLoss()
+        self.fl = nn.CrossEntropyLoss()
         self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, out_adv, out_natural, out_orig, y):  
         # compute simultaneously loss(self.model_natural(x_natural), y) and
         # Loss(self.model_robust(x_adv), self.model_natural(x_natural))
-        loss_mse = self.ce(out_orig, y) + self.mse(out_orig, out_adv)
+        loss_mse = self.fl(out_orig, y) + self.mse(out_orig, out_adv)
         loss_kl = (1.0 / out_orig.size(0)) * \
-            self.criterion_kl(F.log_softmax(out_adv, dim=1),\
-                            F.softmax(out_natural, dim=1
+            self.criterion_kl(
+                F.log_softmax(out_adv, dim=1), 
+                F.softmax(out_natural, dim=1)
             )
-        )
-        loss = loss_mse + self.beta * loss_kl
+        loss = loss_mse + self.alpha * loss_kl
         return loss
 
 
