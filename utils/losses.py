@@ -17,7 +17,7 @@ class LBGATLoss(nn.Module):
         self.alpha = alpha
         self.criterion_kl = nn.KLDivLoss(reduction='sum')
         self.mse = nn.MSELoss()
-        # self.fl = FocalLoss(weight = weight, gamma=2, reduction = 'none')
+        # self.fl = FocalLoss(weight = weight, gamma=2)
         self.fl = nn.CrossEntropyLoss()
         self.softmax = torch.nn.Softmax(dim=1)
 
@@ -35,7 +35,7 @@ class LBGATLoss(nn.Module):
 
 
 class FocalLoss(nn.Module):
-    def __init__(self, weight=None, gamma=2, reduction='mean'):
+    def __init__(self, weight=None, gamma=2, reduction='none'):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.reduction = reduction

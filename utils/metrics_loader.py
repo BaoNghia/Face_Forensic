@@ -7,7 +7,7 @@ class Metrics:
     def __init__(self, metric_names):
         self.metric_names = metric_names
         # initialize a metric dictionary
-        self.metric_dict = {metric_name: [] for metric_name in self.metric_names}
+        self.reset()
 
     def reset(self):
         self.metric_dict = {metric_name: [] for metric_name in self.metric_names}

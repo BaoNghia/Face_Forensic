@@ -2,13 +2,16 @@ import os
 import torch
 import numpy as np
 import pandas as pd
-from data_loader import transforms
+from data_loader import transforms, sampler
 import utils
 from sklearn.model_selection import train_test_split
 
+def get_label(dataset):
+	return dataset.classes
+
 def data_split(data, test_size):
 	X = data["image"]
-	y = data["label"]
+	y = data["class"]
 	x_train, x_test, y_train, y_test = train_test_split(X, y, 
 														test_size=test_size,
 														stratify = y)
@@ -30,20 +33,31 @@ def get_dataset(cfg):
 		train_set, valid_set, _ , _ = data_split(train_set, split_ratio)
 		print("Done Splitting !!!")
 	else:
-		print("Creating validation set from file")
-		print("Reading validation data from file: ", valid_data)
+		print(f"Creating validation set from file: {valid_data}")
 		valid_set = pd.read_csv(valid_data)
 	
 	# Get Custom Dataset inherit from torch.utils.data.Dataset
 	dataset, module, _ = utils.general.get_attr_by_name(cfg["data"]["data.class"])
 	# Create Dataset
-	batch_size = int(cfg["data"]["batch_size"])
-	train_set = dataset(train_set, transform = transforms.train_transform)
-	valid_set = dataset(valid_set, transform = transforms.val_transform)
-	test_set = dataset(test_set, transform = transforms.val_transform)
-	return train_set, valid_set, test_set
+	train_data = dataset(train_set, transform = transforms.train_transform)
+	valid_data = dataset(valid_set, transform = transforms.val_transform)
+	test_data = dataset(test_set, transform = transforms.val_transform)
+	return train_data, valid_data, test_data
 
-	## check Dataloader successfully
-    # dataiter = iter(train_loader)
-    # images, labels = dataiter.next()
-    # print(images.shape, labels.shape)
+def get_dataloader(train_data, valid_data, test_data, batch_size = 8):
+	kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+	train_loader = torch.utils.data.DataLoader(
+		train_data, sampler = sampler.ImbalancedDatasetSampler(train_data, get_label),
+		batch_size=batch_size, shuffle=True, **kwargs
+	)
+
+	valid_loader = torch.utils.data.DataLoader(
+		train_data, sampler = sampler.ImbalancedDatasetSampler(valid_data, get_label),
+		batch_size=batch_size, shuffle=True, **kwargs
+	)
+	
+	test_loader = torch.utils.data.DataLoader(
+		test_data, sampler = sampler.ImbalancedDatasetSampler(test_data, get_label),
+		batch_size=batch_size, **kwargs
+	)
+	return train_loader, valid_loader, test_loader

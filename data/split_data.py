@@ -14,6 +14,17 @@ def data_split(data, test_size):
     test_data = data.iloc[x_test.index, :]
     return train_data.reset_index(drop=True), test_data.reset_index(drop=True)
 
+def data2csv(path, data, split = True):
+    from sklearn.utils.class_weight import compute_class_weight
+    os.makedirs(path, exist_ok=True) 
+    train, test = data_split(data, test_size = 0.15)
+    train, valid = data_split(train, test_size = 0.1764)
+    data.to_csv(os.path.join(path, "all_data.csv"), index=None)
+    train.to_csv(os.path.join(path, "train.csv"), index=None)
+    valid.to_csv(os.path.join(path, "valid.csv"), index=None)
+    test.to_csv(os.path.join(path, "test.csv"), index=None)
+    return train, valid, test
+
 DATASET_PATHS = {
     'original': 'original_sequences/youtube',
     'Deepfakes': 'manipulated_sequences/Deepfakes',
@@ -58,17 +69,12 @@ if __name__ == "__main__":
                     data['class'].extend([label_dict[label]]*len(files))
         all_data = pd.DataFrame(data)
 
-    all_data.to_csv("./data/all_data.csv", index=None)
-    train, test = data_split(all_data, test_size = 0.15)
-    train, valid = data_split(train, test_size = 0.1764)
-    train.to_csv("./data/csv/train.csv", index=None)
-    valid.to_csv("./data/csv/valid.csv", index=None)
-    test.to_csv("./data/test.csv", index=None)
-
-    class_weights = compute_class_weight(class_weight = "balanced",
-                                        classes = np.unique(train['class']),
-                                        y = train['class'])
-    print(class_weights)
-    # print(train['class'].value_counts())
-    # print(valid['class'].value_counts())
-    # print(test['class'].value_counts())
+    train, valid, test = data2csv(path = "./data/csv", data = all_data)
+    _, train_10 = data_split(train, test_size=0.1)
+    _, valid_10 = data_split(valid, test_size=0.1)
+    _, test_10 = data_split(test, test_size=0.1)
+    path = "./data/csv10"
+    os.makedirs(path, exist_ok=True)
+    train_10.to_csv(os.path.join(path, "train.csv"), index=None)
+    valid_10.to_csv(os.path.join(path, "valid.csv"), index=None)
+    test_10.to_csv(os.path.join(path, "test.csv"), index=None)

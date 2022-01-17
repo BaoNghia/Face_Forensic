@@ -19,23 +19,21 @@ class ClassificationDataset(torch.utils.data.Dataset):
 			training (bool, optional): []. Defaults to True.
 		"""
 		self.data = data
-		self.imgs = data["image"].unique().tolist()
+		self.imgs = data["image"]
+		self.classes = data["class"]
 		self.training = training
 		self.transform = transform
 
 	def __getitem__(self, idx):
 		image = Image.open(self.data.iloc[idx, 0])
-		# image = cv2.imread(self.data.iloc[idx, 0])
-		# image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-		# image = image/255
-
 		label = self.data.iloc[idx, 1]
 		label = torch.tensor(label, dtype=torch.long)
 
 		if self.transform is not None:
 			image = self.transform(image)
-		
 		return image, label
+
 
 	def __len__(self):
 		return len(self.imgs)
+

@@ -6,34 +6,44 @@ session: {
 
 data : {
   data.class: data_loader.Classify.ClassificationDataset,
-  data_csv_name: ./data/csv/train.csv,
+  data_csv_name: ./data/csv10/train.csv,
   validation_ratio: 0,
-  validation_csv_name : ./data/csv/valid.csv,
-  test_csv_name: ./data/csv/test.csv,
+  validation_csv_name : ./data/csv10/valid.csv,
+  test_csv_name: ./data/csv10/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
   batch_size: 12,
 }
 
 model_natural: {
-  model.class: models.resnet_transfer.resnet.ResNet_transfer,
-  model_name: resnet50,
-  num_class: 100,
-  pretrained: true,
+  model.class: models.resnetcifar.ResNet18_cifar,
+  num_classes: 100,
 }
 
 model_robust: {
-  model.class: models.wideresnet.wresnet.WideResNet_transfer,
-  model_name: wide_resnet50_2,
-  num_class: 100,
-  pretrained: true,
+  model.class: models.wideresnetcifar.WideResNet,
+  num_classes: 100,
+}
+
+loss: {
+  name: LBGATLoss,
+  weight: [4,1],
+  beta: 1,
+}
+
+adversarial: {
+  perturb_steps: 10,
+  step_size: 0.007,
+  epsilon: 0.031,
+  norm: np.inf,
 }
 
 # configure arguments of torch.optim.Optimizer
 # You can add other arguments for the Optimizer
 # Do not modify this key (eg. "name": SGD)
 optimizer: {
-  name: Adam,
-  lr: 1e-1,
+  name: SGD,
+  lr: 1e-2,
+  momentum: 0.9,
   weight_decay: 2e-4,
 }
 
@@ -49,24 +59,7 @@ scheduler: {
 }
 
 # Support sklearn metrics or custom metrics
-adversarial: {
-  perturb_steps: 10,
-  step_size: 0.003,
-  epsilon: 0.031,
-  norm: np.inf,
-}
-
-loss: {
-  name: LBGATLoss,
-  weight: [4,1],
-  beta: 1,
-}
-
-# Support sklearn metrics or custom metrics
 train: {
   num_epochs: 100,
   metrics: ["accuracy_score", "f1_score"],
-  # EarlyStopping
-  patience: 5,
-  mode: min,
 }

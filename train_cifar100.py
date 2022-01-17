@@ -5,11 +5,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from utils import callbacks, metrics_loader, general
-from data_loader.dataloader import get_dataset, get_dataloader
+from data_loader.dataloader import get_dataset
 from utils.general import (model_loader,  get_optimizer, get_loss_fn, adjust_learning_rate, \
     get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
 import argparse
-import tester, trainer
+import tester
+import trainer_cifar as trainer
 from data_loader.cifar_dataloader import cifar10_dataloader, cifar100_dataloader
 
 # from torchsampler import ImbalancedDatasetSampler
@@ -24,7 +25,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
     # Checking cuda
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    device = "cpu"
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
@@ -34,9 +34,20 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     # using parsed configurations to create a dataset
     # Create dataset
     num_of_class = len(cfg["data"]["label_dict"])
-    train_data, valid_data, test_data = get_dataset(cfg)
+    train_set, valid_set, test_set = get_dataset(cfg)
+
+    # Dataloader
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     batch_size = int(cfg["data"]["batch_size"])
-    train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
+    train_loader = torch.utils.data.DataLoader(
+		train_set, batch_size=batch_size, shuffle=True, **kwargs
+    )
+    valid_loader = torch.utils.data.DataLoader(
+		valid_set, batch_size=batch_size, shuffle=False, **kwargs
+    )
+    test_loader = torch.utils.data.DataLoader(
+		test_set, batch_size=batch_size, shuffle=False, **kwargs
+    )
     print("Dataset and Dataloaders created")
 
     # create a metric for evaluating
@@ -63,14 +74,14 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
     print("Beginning training...")
-
+    
     # training models
     logging.info("--"*50)
     num_epochs = int(cfg["train"]["num_epochs"])
     t0 = time.time()
     best_valid_lost = np.inf
 
-    # train_loader, valid_loader = cifar100_dataloader(cfg)
+    train_loader, valid_loader = cifar100_dataloader(cfg)
     for epoch in range(num_epochs):
         t1 = time.time()
         adjust_learning_rate(optimizer, epoch, init_lr)
@@ -140,7 +151,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-c', '--configure', default='cfgs/tense.yaml', help='YAML file')
+    parser.add_argument('-c', '--configure', default='cfgs/tense_cifar100.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint

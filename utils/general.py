@@ -7,20 +7,6 @@ from torch.utils.tensorboard import SummaryWriter
 from utils import losses as custom_loss
 
 
-def adjust_learning_rate(optimizer, epoch, init_lr):
-    """decrease the learning rate"""
-    lr = init_lr
-    if epoch==1:
-       lr=0.02
-    if epoch >= 76:
-        lr = init_lr * 0.1
-    if epoch >= 91:
-        lr = init_lr * 0.01
-    if epoch >= 101:
-        lr = init_lr * 0.001
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    return optimizer
 
 def get_attr_by_name(func_str):
     """
@@ -57,9 +43,9 @@ def get_optimizer(config):
 def adjust_learning_rate(optimizer, epoch, init_lr):
     """decrease the learning rate"""
     lr = init_lr
-    if epoch==1:
+    if epoch==0:
        lr=0.02
-    if epoch >= 76:
+    if epoch >= 75:
         lr = init_lr * 0.1
     if epoch >= 91:
         lr = init_lr * 0.01
@@ -107,10 +93,12 @@ def make_dir_epoch_time(base_path, session_name, time_str):
 def save_last_checkpoint(checkpoint, log_dir, name):
     cp_path = os.path.join(log_dir, f"{name}_last.ckpt")
     torch.save(checkpoint, cp_path)
+    return cp_path
 
 def save_best_checkpoint(checkpoint, log_dir, name):
     cp_path = os.path.join(log_dir, f"{name}_best.ckpt")
     torch.save(checkpoint, cp_path)
+    return cp_path
 
 def yaml_loader(yaml_file):
     loader = yaml.SafeLoader

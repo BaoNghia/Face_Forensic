@@ -1,43 +1,56 @@
 import random
 import numpy as np
 import pandas as pd
-import torch
-from torch.utils.data.sampler import Sampler
+import torch, torchvision
+from typing import Callable
 
 
-
-class ImbalancedDatasetSampler(Sampler):
+class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
     """Samples elements randomly from a given list of indices for imbalanced dataset
     Arguments:
-        indices (list, optional): a list of indices
-        num_samples (int, optional): number of samples to draw
+        indices: a list of indices
+        num_samples: number of samples to draw
+        callback_get_label: a callback-like function which takes two arguments - dataset and index
     """
 
-    def __init__(self, dataset, indices=None, num_samples=None):
+    def __init__(self, dataset, indices: list = None, num_samples: int = None, callback_get_label: Callable = None):
+        # if indices is not provided, all elements in the dataset will be considered
         self.indices = list(range(len(dataset))) if indices is None else indices
-        self.num_samples = len(self.indices) if num_samples is None else num_samples
-            
-        # distribution of classes in the dataset 
-        label_to_count = {}
-        for idx in self.indices:
-            label = self._get_label(dataset, idx)
-            if label in label_to_count:
-                label_to_count[label] += 1
-            else:
-                label_to_count[label] = 1
-                
-        # weight for each sample
-        weights = [1.0 / label_to_count[self._get_label(dataset, idx)]
-                   for idx in self.indices]
-        self.weights = torch.DoubleTensor(weights)
 
-    def _get_label(self, dataset, idx):
-        return dataset[idx][1].item()
-                
+        # define custom callback
+        self.callback_get_label = callback_get_label
+
+        # if num_samples is not provided, draw `len(indices)` samples in each iteration
+        self.num_samples = len(self.indices) if num_samples is None else num_samples
+
+        # distribution of classes in the dataset
+        df = pd.DataFrame()
+        df["label"] = self._get_labels(dataset)
+        df.index = self.indices
+        df = df.sort_index()
+
+        label_to_count = df["label"].value_counts()
+        weights = 1.0 / label_to_count[df["label"]]
+        self.weights = torch.DoubleTensor(weights.to_list())
+
+    def _get_labels(self, dataset):
+        if self.callback_get_label:
+            return self.callback_get_label(dataset)
+        elif isinstance(dataset, torchvision.datasets.MNIST):
+            return dataset.train_labels.tolist()
+        elif isinstance(dataset, torchvision.datasets.ImageFolder):
+            return [x[1] for x in dataset.imgs]
+        elif isinstance(dataset, torchvision.datasets.DatasetFolder):
+            return dataset.samples[:][1]
+        elif isinstance(dataset, torch.utils.data.Subset):
+            return dataset.dataset.imgs[:][1]
+        elif isinstance(dataset, torch.utils.data.Dataset):
+            return dataset.get_labels()
+        else:
+            raise NotImplementedError
+
     def __iter__(self):
-        rand_tensor = torch.multinomial(self.weights, self.num_samples, replacement=True)
-        yield from iter(rand_tensor.tolist())
-        # return (self.indices[i] for i in torch.multinomial(self.weights, self.num_samples, replacement=True))
+        return (self.indices[i] for i in torch.multinomial(self.weights, self.num_samples, replacement=True))
 
     def __len__(self):
         return self.num_samples
