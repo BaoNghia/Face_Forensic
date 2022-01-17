@@ -25,12 +25,12 @@ class ImbalancedDatasetSampler(torch.utils.data.sampler.Sampler):
 
         # distribution of classes in the dataset
         df = pd.DataFrame()
-        df["label"] = self._get_labels(dataset)
+        df["classes"] = self._get_labels(dataset)
         df.index = self.indices
         df = df.sort_index()
 
-        label_to_count = df["label"].value_counts()
-        weights = 1.0 / label_to_count[df["label"]]
+        label_to_count = df["classes"].value_counts()
+        weights = 1.0 / label_to_count[df["classes"]]
         self.weights = torch.DoubleTensor(weights.to_list())
 
     def _get_labels(self, dataset):
