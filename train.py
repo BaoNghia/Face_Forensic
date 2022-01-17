@@ -24,7 +24,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
     # Checking cuda
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    device = "cpu"
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
@@ -113,16 +112,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         if valid_loss < best_valid_lost:
             best_valid_lost = valid_loss
             best_cpkt = save_best_checkpoint(robust_checkpoint, log_dir, name = "robust")
-        
-
-    ## testing on test set
-    ## load the test model and making inference
-    # print("\n==============Inference on the testing set==============")
-    # best_checkpoint = torch.load(checkpoint_path)
-    # test_model = best_checkpoint['model']
-    # test_model.load_state_dict(best_checkpoint['state_dict'])
-    # test_model = test_model.to(device)
-    # test_model.eval()
 
     ## logging report
     test_model = model_robust.to(device)

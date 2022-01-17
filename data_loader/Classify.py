@@ -33,6 +33,8 @@ class ClassificationDataset(torch.utils.data.Dataset):
 			image = self.transform(image)
 		return image, label
 
+	def get_labels(self):
+		return self.classes.tolist()
 
 	def __len__(self):
 		return len(self.imgs)
