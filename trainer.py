@@ -42,9 +42,8 @@ def train_epoch(
             train_loss += loss.item()
             ## calculate training metrics
             outputs = model_robust(inputs)
-            outputs_softmax = torch.softmax(outputs, dim=-1)
-            probs, preds = torch.max(outputs_softmax.data, dim=-1)
-            correct += torch.sum(preds.data == targets.data).item()
+            _, preds = torch.max(outputs.data, dim=-1)
+            correct += torch.sum(preds.squeeze().data == targets.data).item()
             train_metrics.step(targets.cpu().detach().numpy(), preds.cpu().detach().numpy())
 
             ## pbar
@@ -89,9 +88,8 @@ def valid_epoch(
                 valid_loss += loss.item()
                 ## calculate training metrics
                 outputs = model_robust(inputs)
-                outputs_softmax = torch.softmax(outputs, dim=-1)
-                probs, preds = torch.max(outputs_softmax.data, dim=-1)
-                correct += torch.sum(preds.data == targets.data).item()
+                _, preds = torch.max(outputs.data, dim=-1)
+                correct += torch.sum(preds.squeeze().data == targets.data).item()
 
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())

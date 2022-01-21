@@ -43,7 +43,7 @@ def train_epoch(
             ## calculate training metrics
             outputs = model_robust(inputs)
             preds = outputs.max(1, keepdim=True)[1]
-            correct += torch.sum(preds.data == targets.data).item()
+            correct += torch.sum(preds.squeeze().data == targets.data).item()
             train_metrics.step(targets.cpu().detach().numpy(), preds.cpu().detach().numpy())
 
             ## pbar
@@ -89,7 +89,7 @@ def valid_epoch(
                 ## calculate training metrics
                 outputs = model_robust(inputs)
                 preds = outputs.max(1, keepdim=True)[1]
-                correct += torch.sum(preds.data == targets.data).item()
+                correct += torch.sum(preds.squeeze().data == targets.data).item()
 
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())
