@@ -4,7 +4,7 @@ import sys
 import os
 import torch
 
-def load_wideresnet(name, num_class = 2, pretrained = True):
+def load_wideresnet(name, num_classes = 2, pretrained = True):
     if not name in ['wide_resnet50_2', 'wide_resnet101_2']:
         raise ValueError("name must be in {'wide_resnet50_2', 'wide_resnet101_2'}")
         sys.exit()
@@ -20,15 +20,15 @@ def load_wideresnet(name, num_class = 2, pretrained = True):
         nn.Linear(512, 256, bias=True),
         nn.ReLU(inplace=True),
         nn.Dropout(0.2),
-        nn.Linear(256, num_class, bias=True),
+        nn.Linear(256, num_classes, bias=True),
     )
     model.fc = classifier
     return model
 
 class WideResNet_transfer(nn.Module):
-    def __init__(self, model_name, num_class, pretrained, **kwargs):
+    def __init__(self, model_name, num_classes, pretrained, **kwargs):
         super(WideResNet_transfer, self).__init__()
-        self.model = load_wideresnet(model_name, num_class, pretrained)
+        self.model = load_wideresnet(model_name, num_classes, pretrained)
 
     def forward(self, x):
         return self.model(x)

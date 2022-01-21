@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
-from models.PGD import generate_adversarial
+from models.PGD import generate_adversarial, generate_adversarial2
 from utils.general import convert_size
 
       
@@ -26,7 +26,7 @@ def train_epoch(
             ## generate adversarial_sample
             # optimizer.zero_grad()
             model_robust.eval()
-            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, device, cfg.get("adversarial"))
+            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
             model_natural.train()

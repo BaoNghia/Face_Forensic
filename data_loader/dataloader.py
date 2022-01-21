@@ -1,9 +1,9 @@
 import os
+import utils
 import torch
 import numpy as np
 import pandas as pd
 from data_loader import transforms, sampler
-import utils
 from sklearn.model_selection import train_test_split
 
 def get_label(dataset):
@@ -46,19 +46,19 @@ def get_dataset(cfg):
 
 def get_dataloader(train_data, valid_data, test_data, batch_size = 8):
 	kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-	train_sampler = sampler.ImbalancedDatasetSampler(train_data)
+	# train_sampler = sampler.ImbalancedDatasetSampler(train_data)
 	train_loader = torch.utils.data.DataLoader(
-		train_data, sampler = train_sampler,
+		train_data, sampler = None,
 		batch_size=batch_size, **kwargs
 	)
 	
 	valid_loader = torch.utils.data.DataLoader(
-		train_data, sampler = sampler.ImbalancedDatasetSampler(valid_data),
+		valid_data, sampler = None,
 		batch_size=batch_size, **kwargs
 	)
 
 	test_loader = torch.utils.data.DataLoader(
-		test_data, sampler = sampler.ImbalancedDatasetSampler(test_data),
+		test_data, sampler=None,
 		batch_size=batch_size, **kwargs
 	)
 	return train_loader, valid_loader, test_loader

@@ -77,9 +77,9 @@ def load_resnet(name, num_class = 2, pretrained = True):
     return model
 
 class ResNet_transfer(nn.Module):
-    def __init__(self, model_name, num_class, pretrained,**kwargs):
+    def __init__(self, model_name, num_classes, pretrained,**kwargs):
         super(ResNet_transfer, self).__init__()
-        self.model = load_resnet(model_name, num_class, pretrained)
+        self.model = load_resnet(model_name, num_classes, pretrained)
 
     def forward(self, data):
         return self.model(data)

@@ -57,14 +57,8 @@ def optimize_linear(grad, eps, norm=np.inf):
     scaled_perturbation = eps * optimal_perturbation
     return scaled_perturbation
 
-def squared_l2_norm(x):
-    flattened = x.view(x.unsqueeze(0).shape[0], -1)
-    return (flattened ** 2).sum(1)
-
-def l2_norm(x):
-    return squared_l2_norm(x).sqrt()
-            
-def generate_adversarial(model_robust, x_natural, criterion_kl, device, cfg):
+ 
+def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
@@ -93,3 +87,53 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, device, cfg):
 
     x_adv = Variable(x_adv, requires_grad=False)
     return x_adv
+
+
+def squared_l2_norm(x):
+    flattened = x.view(x.unsqueeze(0).shape[0], -1)
+    return (flattened ** 2).sum(1)
+
+def l2_norm(x):
+    return squared_l2_norm(x).sqrt()
+
+def generate_adversarial2(model_robust, x_natural, criterion_kl, cfg):
+    norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
+    perturb_steps = cfg['perturb_steps']
+    epsilon = cfg['epsilon']
+    step_size = cfg['step_size']
+    batch_size = len(x_natural)
+
+    model_robust.eval()
+    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    if norm == np.inf:
+        for _ in range(perturb_steps):
+            x_adv.requires_grad_()
+            with torch.enable_grad():
+                loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
+                                       F.softmax(model_robust(x_natural), dim=1))
+            grad = torch.autograd.grad(loss_kl, [x_adv])[0]
+            x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
+            x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    elif norm == 2:
+        for _ in range(perturb_steps):
+            x_adv.requires_grad_()
+            with torch.enable_grad():
+                loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
+                                       F.softmax(model_robust(x_natural), dim=1))
+                grad = torch.autograd.grad(loss_kl, [x_adv])[0]
+                for idx_batch in range(batch_size):
+                    grad_idx = grad[idx_batch]
+                    grad_idx_norm = l2_norm(grad_idx)
+                    grad_idx /= (grad_idx_norm + 1e-8)
+                    x_adv[idx_batch] = x_adv[idx_batch].detach() + step_size * grad_idx
+                    eta_x_adv = x_adv[idx_batch] - x_natural[idx_batch]
+                    norm_eta = l2_norm(eta_x_adv)
+                    if norm_eta > epsilon:
+                        eta_x_adv = eta_x_adv * epsilon / l2_norm(eta_x_adv)
+                    x_adv[idx_batch] = x_natural[idx_batch] + eta_x_adv
+                x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    else:
+        x_adv = torch.clamp(x_adv, 0.0, 1.0)
+    return Variable(x_adv, requires_grad=False)
+    

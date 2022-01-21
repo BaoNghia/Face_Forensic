@@ -11,17 +11,21 @@ data : {
   validation_csv_name : ./data/csv10/valid.csv,
   test_csv_name: ./data/csv10/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 12,
+  batch_size: 22,
 }
 
 model_natural: {
-  model.class: models.resnetcifar.ResNet18_cifar,
-  num_classes: 100,
+  model.class: models.resnet_transfer.resnet.ResNet_transfer,
+  model_name: resnet34,
+  pretrained: true,
+  num_classes: 2,
 }
 
 model_robust: {
-  model.class: models.wideresnetcifar.WideResNet,
-  num_classes: 100,
+  model.class: models.wideresnet_tranfer.wresnet.WideResNet_transfer,
+  model_name: wide_resnet50_2,
+  pretrained: true,
+  num_classes: 2,
 }
 
 loss: {
