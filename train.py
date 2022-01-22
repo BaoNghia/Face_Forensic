@@ -108,28 +108,28 @@ def main(cfg, all_model, log_dir, checkpoint=None):
             'state_dict': model_robust.state_dict(),
             'optimizer': optimizer.state_dict(),
         }
-        last_cpkt = save_last_checkpoint(robust_checkpoint, log_dir, name = "robust")
+        last_cpkt_path = save_last_checkpoint(robust_checkpoint, log_dir, name = "robust")
         if valid_loss < best_valid_lost:
             best_valid_lost = valid_loss
-            best_cpkt = save_best_checkpoint(robust_checkpoint, log_dir, name = "robust")
+            best_cpkt_path = save_best_checkpoint(robust_checkpoint, log_dir, name = "robust")
 
     ## logging report
     test_model = model_robust.to(device)
     test_model.eval()
-    # report = tester.test_result(test_model, test_loader, device, cfg)
-    report = tester.test_result(test_model, valid_loader, device, cfg)
+    report = tester.test_result(test_model, test_loader, device, cfg)
+    # report = tester.test_result(test_model, valid_loader, device, cfg)
     logging.info(f"\nClassification Report: \n {report}")
     logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
 
     print(f"Classification Report: \n {report}")
     print("Completed in {:.3f} seconds.".format(time.time() - t0))
     print(f"-------- Checkpoints and logs are saved in ``{log_dir}`` --------")
-    return best_cpkt
+    return best_cpkt_path
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-c', '--configure', default='cfgs/tense.yaml', help='YAML file')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     print(f"Number parameters of model: {num_parameter}")
     # time.sleep(1.8)
 
-    best_ckpt = main(
+    best_ckpt_path = main(
         cfg = config,
         all_model = all_model,
         log_dir = log_dir,

@@ -79,7 +79,7 @@ def valid_epoch(
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, device, cfg.get("adversarial"))
+                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)
