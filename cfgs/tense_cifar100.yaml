@@ -11,7 +11,7 @@ data : {
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 128,
+  batch_size: 140,
 }
 
 model_natural: {
@@ -23,6 +23,20 @@ model_robust: {
   model.class: models.wideresnetcifar.WideResNet,
   num_classes: 100,
 }
+
+# model_natural: {
+#   model.class: models.resnet_transfer.resnet.ResNet_transfer,
+#   model_name: resnet18,
+#   pretrained: false,
+#   num_classes: 100,
+# }
+
+# model_robust: {
+#   model.class: models.wideresnet_tranfer.wresnet.WideResNet_transfer,
+#   model_name: wide_resnet50_2,
+#   pretrained: true,
+#   num_classes: 100,
+# }
 
 loss: {
   name: LBGATLoss,

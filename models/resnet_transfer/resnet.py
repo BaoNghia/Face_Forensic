@@ -65,10 +65,7 @@ def load_resnet(name, num_class = 2, pretrained = True):
         param.requires_grad = True
         
     fc_layer = nn.Sequential(
-        nn.Linear(model.fc.in_features, 512, bias=True),
-        nn.ReLU(inplace=True),
-        nn.Dropout(0.2),
-        nn.Linear(512, 256, bias=True),
+        nn.Linear(model.fc.in_features, 256, bias=True),
         nn.ReLU(inplace=True),
         nn.Dropout(0.2),
         nn.Linear(256, num_class, bias=True),

@@ -24,8 +24,7 @@ def train_epoch(
             inputs = inputs.to(device)
             targets = targets.to(device)
             ## generate adversarial_sample
-            # optimizer.zero_grad()
-            model_robust.eval()
+            optimizer.zero_grad()
             x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
@@ -38,13 +37,13 @@ def train_epoch(
             loss = criterion(out_adv, out_natural, out_orig, targets)
             loss.backward()
             optimizer.step()
-            ## update-training-loss
-            train_loss += loss.item()
+            ## update training-loss
+            train_loss += loss.item() * inputs.size(0)
             ## calculate training metrics
             outputs = model_robust(inputs)
             _, preds = torch.max(outputs.data, dim=-1)
-            correct += torch.sum(preds.squeeze().data == targets.data).item()
-            train_metrics.step(targets.cpu().detach().numpy(), preds.cpu().detach().numpy())
+            correct += torch.sum(preds.data == targets.data).item()
+            train_metrics.step(preds.cpu().detach().numpy(), targets.cpu().detach().numpy())
 
             ## pbar
             mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
@@ -53,8 +52,8 @@ def train_epoch(
             pbar.set_description(s)
             pbar.set_postfix(lr = optimizer.param_groups[0]['lr'])
 
-        train_loss = train_loss/len(train_loader)
-        train_acc = correct/len(train_loader)
+        train_loss = train_loss/len(train_loader.dataset)
+        train_acc = correct/len(train_loader.dataset)
 
     return train_loss, train_acc, train_metrics.epoch()
         
@@ -85,17 +84,17 @@ def valid_epoch(
                 out_natural = model_robust(inputs)
                 out_orig = model_natural(inputs)
                 loss = criterion(out_adv, out_natural, out_orig, targets)
-                valid_loss += loss.item()
+                valid_loss += loss.item() * inputs.size(0)
                 ## calculate training metrics
                 outputs = model_robust(inputs)
                 _, preds = torch.max(outputs.data, dim=-1)
-                correct += torch.sum(preds.squeeze().data == targets.data).item()
+                correct += torch.sum(preds.data == targets.data).item()
 
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())
 
-        valid_loss = valid_loss/len(valid_loader)
-        valid_acc = correct/len(valid_loader)
+        valid_loss = valid_loss/len(valid_loader.dataset)
+        valid_acc = correct/len(valid_loader.dataset)
         valid_metrics.step(all_labels, all_preds)
 
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))

@@ -36,6 +36,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
     train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
+    train_loader, valid_loader, test_loader = cifar100_dataloader(cfg)
     print("Dataset and Dataloaders created")
 
     # create a metric for evaluating
@@ -69,7 +70,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     t0 = time.time()
     best_valid_lost = np.inf
 
-    # train_loader, valid_loader = cifar100_dataloader(cfg)
     for epoch in range(num_epochs):
         t1 = time.time()
         adjust_learning_rate(optimizer, epoch, init_lr)
@@ -84,7 +84,6 @@ def main(cfg, all_model, log_dir, checkpoint=None):
                                                                 cfg, train_loss, train_acc,
         )
         # scheduler.step(valid_loss)
-
 
         print("Valid result: ", valid_result)
         ## log to file 
@@ -129,7 +128,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_cifar100.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint

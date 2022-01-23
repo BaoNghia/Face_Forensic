@@ -63,6 +63,7 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
+    model_robust.eval()
 
     ## generate adversarial example
     # eta = (0.001 * torch.randn(x_natural.shape).detach()).to(device)
@@ -70,7 +71,7 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     eta = clip_eta(eta, norm, epsilon)
     x_adv = x_natural.detach() + eta
     x_adv = torch.clamp(x_adv, 0.0, 1.0)
-
+    
     for _ in range(perturb_steps):
         x_adv.requires_grad_()
         with torch.enable_grad():
