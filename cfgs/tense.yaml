@@ -14,7 +14,7 @@ data : {
   batch_size: 22,
 }
 
-model_natural: {
+model_teacher: {
   model.class: models.resnet_transfer.resnet.ResNet_transfer,
   model_name: resnet34,
   pretrained: true,

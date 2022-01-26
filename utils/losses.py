@@ -21,9 +21,7 @@ class LBGATLoss(nn.Module):
         self.fl = nn.CrossEntropyLoss()
         self.softmax = torch.nn.Softmax(dim=1)
 
-    def forward(self, out_adv, out_natural, out_orig, y):  
-        # compute simultaneously loss(self.model_natural(x_natural), y) and
-        # Loss(self.model_robust(x_adv), self.model_natural(x_natural))
+    def forward(self, out_adv, out_natural, out_orig, y):
         loss_mse = self.fl(out_orig, y) + self.mse(out_orig, out_adv)
         loss_kl = (1.0 / out_orig.size(0)) * \
             self.criterion_kl(

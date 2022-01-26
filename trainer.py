@@ -9,7 +9,7 @@ from utils.general import convert_size
       
 def train_epoch(
         epoch, num_epochs, device,
-        model_robust, model_natural,
+        model_robust, model_teacher,
         train_loader, train_metrics,
         criterion, optimizer, cfg
     ):
@@ -25,14 +25,15 @@ def train_epoch(
             targets = targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+            # x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+            x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
-            model_natural.train()
+            model_teacher.train()
             optimizer.zero_grad()
             out_adv = model_robust(x_adv)
             out_natural = model_robust(inputs)
-            out_orig = model_natural(inputs)
+            out_orig = model_teacher(inputs)
             ## forward model and compute loss
             loss = criterion(out_adv, out_natural, out_orig, targets)
             loss.backward()
@@ -59,7 +60,7 @@ def train_epoch(
         
     
 def valid_epoch(
-        device, model_robust, model_natural,
+        device, model_robust, model_teacher,
         valid_loader, valid_metrics,
         criterion, cfg, train_loss, train_acc
     ):
@@ -72,17 +73,18 @@ def valid_epoch(
             all_labels = []
             all_preds = []
             criterion_kl = nn.KLDivLoss(reduction='sum')
-            model_natural.eval()
+            model_teacher.eval()
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+                # x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+                x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)
-                out_orig = model_natural(inputs)
+                out_orig = model_teacher(inputs)
                 loss = criterion(out_adv, out_natural, out_orig, targets)
                 valid_loss += loss.item() * inputs.size(0)
                 ## calculate training metrics

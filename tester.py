@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
 
-def test_result(model, test_loader, device, cfg):
+def test_result(model, test_loader, device, label_name):
     # testing the model by turning model "eval" mode
     with torch.no_grad():
         model.eval()
@@ -35,7 +35,7 @@ def test_result(model, test_loader, device, cfg):
             probs, preds = torch.max(outputs_softmax.data, dim=-1)
             list_labels.extend(targets.cpu().detach().numpy())
             list_preds.extend(preds.cpu().detach().numpy())
-    return (classification_report(list_labels, list_preds, target_names=cfg["data"]["label_dict"], zero_division = 1))
+    return (classification_report(list_labels, list_preds, target_names=label_name, zero_division = 1))
 
 def test(model, device, test_loader, criterion, test_metrics):
     #validate-the-model

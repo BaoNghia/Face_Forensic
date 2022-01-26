@@ -28,7 +28,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
     # Convert to suitable device
     model_robust = nn.DataParallel(all_model["model_robust"]).to(device)
-    model_natural = nn.DataParallel(all_model["model_natural"]).to(device)
+    model_teacher = nn.DataParallel(all_model["model_teacher"]).to(device)
 
     # using parsed configurations to create a dataset
     # Create dataset
@@ -50,7 +50,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## optimizer
     optimizer_module, optimizer_params = get_optimizer(cfg)
     # parameters = [{"params": model.parameters()} for name, model in all_model.items()]
-    parameters = [{'params': model_robust.parameters()}, {'params': model_natural.parameters()}]
+    parameters = [{'params': model_robust.parameters()}, {'params': model_teacher.parameters()}]
     optimizer = optimizer_module(parameters, **optimizer_params)
     init_lr = optimizer_params["lr"]
     ## initlize sheduler from config
@@ -75,11 +75,11 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         adjust_learning_rate(optimizer, epoch, init_lr)
         print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
-                                                                model_robust, model_natural,
+                                                                model_robust, model_teacher,
                                                                 train_loader, train_metrics,
                                                                 criterion, optimizer, cfg
         )
-        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_natural,
+        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_teacher,
                                                                 valid_loader, valid_metrics, criterion,
                                                                 cfg, train_loss, train_acc,
         )
@@ -115,8 +115,8 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## logging report
     test_model = model_robust.to(device)
     test_model.eval()
-    report = tester.test_result(test_model, test_loader, device, cfg)
-    # report = tester.test_result(test_model, valid_loader, device, cfg)
+    report = tester.test_result(test_model, test_loader, device, None)
+    # report = tester.test_result(test_model, valid_loader, device, cfg.get("data")["label_dict"])
     logging.info(f"\nClassification Report: \n {report}")
     logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
 

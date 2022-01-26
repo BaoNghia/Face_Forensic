@@ -14,7 +14,7 @@ data : {
   batch_size: 140,
 }
 
-model_natural: {
+model_teacher: {
   model.class: models.resnetcifar.ResNet18_cifar,
   num_classes: 100,
 }
@@ -24,10 +24,10 @@ model_robust: {
   num_classes: 100,
 }
 
-# model_natural: {
+# model_teacher: {
 #   model.class: models.resnet_transfer.resnet.ResNet_transfer,
 #   model_name: resnet18,
-#   pretrained: false,
+#   pretrained: true,
 #   num_classes: 100,
 # }
 

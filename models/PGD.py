@@ -58,12 +58,12 @@ def optimize_linear(grad, eps, norm=np.inf):
     return scaled_perturbation
 
  
-def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
+def generate_adversarial(model, x_natural, criterion_kl, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
-    model_robust.eval()
+    model.eval()
 
     ## generate adversarial example
     # eta = (0.001 * torch.randn(x_natural.shape).detach()).to(device)
@@ -75,8 +75,8 @@ def generate_adversarial(model_robust, x_natural, criterion_kl, cfg):
     for _ in range(perturb_steps):
         x_adv.requires_grad_()
         with torch.enable_grad():
-            loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
-                                    F.softmax(model_robust(x_natural), dim=1))
+            loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                    F.softmax(model(x_natural), dim=1))
         grad = torch.autograd.grad(loss_kl, [x_adv])[0]
         optimal_perturbation = optimize_linear(grad, step_size, norm)
         x_adv = x_adv.detach() + optimal_perturbation
@@ -97,21 +97,21 @@ def squared_l2_norm(x):
 def l2_norm(x):
     return squared_l2_norm(x).sqrt()
 
-def generate_adversarial2(model_robust, x_natural, criterion_kl, cfg):
+def generate_adversarial2(model, x_natural, criterion_kl, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
     batch_size = len(x_natural)
 
-    model_robust.eval()
+    model.eval()
     x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
     if norm == np.inf:
         for _ in range(perturb_steps):
             x_adv.requires_grad_()
             with torch.enable_grad():
-                loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
-                                       F.softmax(model_robust(x_natural), dim=1))
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                       F.softmax(model(x_natural), dim=1))
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)
@@ -120,8 +120,8 @@ def generate_adversarial2(model_robust, x_natural, criterion_kl, cfg):
         for _ in range(perturb_steps):
             x_adv.requires_grad_()
             with torch.enable_grad():
-                loss_kl = criterion_kl(F.log_softmax(model_robust(x_adv), dim=1),
-                                       F.softmax(model_robust(x_natural), dim=1))
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
+                                       F.softmax(model(x_natural), dim=1))
                 grad = torch.autograd.grad(loss_kl, [x_adv])[0]
                 for idx_batch in range(batch_size):
                     grad_idx = grad[idx_batch]
