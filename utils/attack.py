@@ -58,15 +58,14 @@ def optimize_linear(grad, eps, norm=np.inf):
     return scaled_perturbation
 
  
-def generate_adversarial(model, x_natural, criterion_kl, cfg):
+def generate_adversarial(model, x_natural, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
+    criterion_kl = nn.KLDivLoss(reduction='none')
     model.eval()
-
     ## generate adversarial example
-    # eta = (0.001 * torch.randn(x_natural.shape).detach()).to(device)
     eta = torch.zeros_like(x_natural).uniform_(-epsilon, epsilon)
     eta = clip_eta(eta, norm, epsilon)
     x_adv = x_natural.detach() + eta
@@ -77,8 +76,8 @@ def generate_adversarial(model, x_natural, criterion_kl, cfg):
         with torch.enable_grad():
             loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
                                     F.softmax(model(x_natural), dim=1))
-        grad = torch.autograd.grad(loss_kl, [x_adv])[0]
-        optimal_perturbation = optimize_linear(grad, step_size, norm)
+        loss_kl.backward()
+        optimal_perturbation = optimize_linear(x_adv.grad, step_size, norm)
         x_adv = x_adv.detach() + optimal_perturbation
         # x_adv = torch.clamp(x_adv, 0.0, 1.0)
         eta_x_adv = x_adv - x_natural
@@ -97,15 +96,17 @@ def squared_l2_norm(x):
 def l2_norm(x):
     return squared_l2_norm(x).sqrt()
 
-def generate_adversarial2(model, x_natural, criterion_kl, cfg):
+def generate_adversarial2(model, x_natural, cfg):
     norm = np.inf if cfg['norm'] == "np.inf" else int(cfg['norm'])
     perturb_steps = cfg['perturb_steps']
     epsilon = cfg['epsilon']
     step_size = cfg['step_size']
+    criterion_kl = nn.KLDivLoss(reduction='none')
     batch_size = len(x_natural)
-
     model.eval()
-    x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape).cuda().detach()
+    
+    eta = 0.001 * torch.randn_like(x_natural).detach()
+    x_adv = x_natural.detach() + eta
     if norm == np.inf:
         for _ in range(perturb_steps):
             x_adv.requires_grad_()

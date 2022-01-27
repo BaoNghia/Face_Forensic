@@ -19,15 +19,14 @@ def train_epoch(
         mloss = 0
         correct = 0
         model_teacher.train()
-        criterion_kl = nn.KLDivLoss(reduction='sum')
         for batch_idx, (inputs, targets) in pbar:
             ## move-tensors-to-GPU
             inputs = inputs.to(device)
             targets = targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
-            # x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+            x_adv = generate_adversarial(model_robust, inputs, cfg.get("adversarial"))
+            # x_adv = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
@@ -72,15 +71,14 @@ def valid_epoch(
             valid_loss = 0
             all_labels = []
             all_preds = []
-            criterion_kl = nn.KLDivLoss(reduction='sum')
             model_teacher.eval()
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
-                # x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+                x_adv = generate_adversarial(model_robust, inputs, cfg.get("adversarial"))
+                # x_adv = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)
