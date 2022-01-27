@@ -80,7 +80,7 @@ def generate_adversarial(model, x_natural, criterion_kl, cfg):
         grad = torch.autograd.grad(loss_kl, [x_adv])[0]
         optimal_perturbation = optimize_linear(grad, step_size, norm)
         x_adv = x_adv.detach() + optimal_perturbation
-        x_adv = torch.clamp(x_adv, 0.0, 1.0)
+        # x_adv = torch.clamp(x_adv, 0.0, 1.0)
         eta_x_adv = x_adv - x_natural
         eta_x_adv = clip_eta(eta_x_adv, norm, epsilon)
         x_adv = x_natural + eta_x_adv

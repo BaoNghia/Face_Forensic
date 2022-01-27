@@ -36,7 +36,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
     train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
-    train_loader, valid_loader, test_loader = cifar100_dataloader(cfg)
+    train_loader, valid_loader, test_loader = cifar10_dataloader(cfg)
     print("Dataset and Dataloaders created")
 
     # create a metric for evaluating
@@ -85,6 +85,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         )
         # scheduler.step(valid_loss)
 
+        print("Train result: ", train_result)
         print("Valid result: ", valid_result)
         ## log to file 
         logging.info("\n------Epoch {} / {}, Training time: {:.4f} seconds------"\

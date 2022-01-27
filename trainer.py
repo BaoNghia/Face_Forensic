@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import torch.nn as nn
-from models.PGD import generate_adversarial, generate_adversarial2
+from utils.attack import generate_adversarial, generate_adversarial2
 from utils.general import convert_size
 
       
@@ -18,6 +18,7 @@ def train_epoch(
         train_loss = 0
         mloss = 0
         correct = 0
+        model_teacher.train()
         criterion_kl = nn.KLDivLoss(reduction='sum')
         for batch_idx, (inputs, targets) in pbar:
             ## move-tensors-to-GPU
@@ -25,11 +26,10 @@ def train_epoch(
             targets = targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            # x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
-            x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+            x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+            # x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
-            model_teacher.train()
             optimizer.zero_grad()
             out_adv = model_robust(x_adv)
             out_natural = model_robust(inputs)
@@ -79,8 +79,8 @@ def valid_epoch(
                 inputs = inputs.to(device)
                 targets = targets.to(device)
                 # generate adversarial_sample
-                # x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
-                x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+                x_adv = generate_adversarial(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
+                # x_adv = generate_adversarial2(model_robust, inputs, criterion_kl, cfg.get("adversarial"))
                 # forward model and compute loss
                 out_adv = model_robust(x_adv)
                 out_natural = model_robust(inputs)

@@ -61,7 +61,7 @@ scheduler: {
   name: ReduceLROnPlateau,
   min_lr: 1e-4,
   mode: min,
-  patience: 15,
+  patience: 10,
   factor: 0.1,
 }
 
