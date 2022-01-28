@@ -24,7 +24,7 @@ def train_epoch(
             ## generate adversarial_sample
             optimizer.zero_grad()
             # adv_inputs = attacker.perturb_PGD(inputs, targets)
-            adv_inputs = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
+            adv_inputs = generate_TRADES(model_robust, inputs, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
@@ -126,7 +126,7 @@ def valid_adv_epoch(
         valid_loss = valid_loss/len(valid_loader.dataset)
         valid_acc = correct/len(valid_loader.dataset)
         valid_metrics.step(all_labels, all_preds)
-        
+
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))
     return (
         valid_loss, valid_acc,
