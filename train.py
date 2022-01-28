@@ -1,15 +1,21 @@
-import os, time, logging
-from datetime import datetime
+import os
+import time
+import logging
+import argparse
 import numpy as np
-
 import torch
 import torch.nn as nn
-from utils import callbacks, metrics_loader, general
-from data_loader.dataloader import get_dataset, get_dataloader
-from utils.general import (model_loader,  get_optimizer, get_loss_fn, adjust_learning_rate, \
-    get_lr_scheduler, yaml_loader, save_best_checkpoint, save_last_checkpoint)
-import argparse
+
+from utils.attacks import Attacks
+from utils import callbacks, metrics_loader
+from utils.general import (
+    make_writer, log_initilize, yaml_loader,
+    model_loader, get_optimizer, get_loss_fn,
+    adjust_learning_rate, get_lr_scheduler,
+    save_best_checkpoint, save_last_checkpoint)
+
 import tester, trainer
+from data_loader.dataloader import get_dataset, get_dataloader
 from data_loader.cifar_dataloader import cifar10_dataloader, cifar100_dataloader
 
 # from torchsampler import ImbalancedDatasetSampler
@@ -27,15 +33,19 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
-    model_robust = nn.DataParallel(all_model["model_robust"]).to(device)
-    model_teacher = nn.DataParallel(all_model["model_teacher"]).to(device)
+    if device.type == 'cpu':
+        model_robust = all_model["model_robust"].to(device)
+        model_teacher = all_model["model_teacher"].to(device)
+    else:
+        model_robust = nn.DataParallel(all_model["model_robust"]).to(device)
+        model_teacher = nn.DataParallel(all_model["model_teacher"]).to(device)
 
     # using parsed configurations to create a dataset
     # Create dataset
     num_of_class = len(cfg["data"]["label_dict"])
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
-    train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
+    # train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
     train_loader, valid_loader, test_loader = cifar10_dataloader(cfg)
     print("Dataset and Dataloaders created")
 
@@ -59,6 +69,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     ## get Loss function
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
+    attacker = Attacks(model = model_robust, config = cfg.get("adversarial"))
 
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
@@ -77,11 +88,12 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
                                                                 model_robust, model_teacher,
                                                                 train_loader, train_metrics,
-                                                                criterion, optimizer, cfg
+                                                                criterion, optimizer, attacker,
+                                                                cfg,
         )
         valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_teacher,
                                                                 valid_loader, valid_metrics, criterion,
-                                                                cfg, train_loss, train_acc,
+                                                                train_loss, train_acc, attacker, cfg
         )
         # scheduler.step(valid_loss)
 
@@ -129,7 +141,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tense_cifar100.yaml', help='YAML file')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_cifar10.yaml', help='YAML file')
     parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     checkpoint = args.checkpoint
@@ -141,13 +153,13 @@ if __name__ == "__main__":
 
     ## create dir to save log and checkpoint
     save_path = config['session']['save_path']
-    time_str = str(datetime.now().strftime("%Y-%m-%d-%Hh%M"))
+    time_str = str(time.strftime("%Y-%m-%d-%Hh%M", time.localtime()))
     project_name = config["session"]["project_name"]
     log_dir = os.path.join(save_path, project_name, time_str)
 
     ## create logger
-    tb_writer = general.make_writer(log_dir = log_dir)
-    text_logger = general.log_initilize(log_dir)
+    tb_writer = make_writer(log_dir = log_dir)
+    text_logger = log_initilize(log_dir)
     print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
     logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
     logging.info(f"Project name: {project_name}")

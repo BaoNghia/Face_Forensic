@@ -143,3 +143,9 @@ def convert_size(size_bytes):
    p = math.pow(1024, i)
    s = round(size_bytes / p, 2)
    return "%s %s" % (s, size_name[i])
+
+def to_PILImage(x, index = 0):
+    from torchvision import transforms as T
+    trans = T.ToPILImage()
+    img = trans(x[index])
+    return img

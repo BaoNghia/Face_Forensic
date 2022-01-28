@@ -9,11 +9,11 @@ opencv-python
 albumentations
 scikit-learn
 tensorboard
-torch==1.7.1
-torchvision==0.8.2
-torchaudio==0.7.2
+torch==1.9.0
+torchvision==0.10.0
+torchaudio==0.9.0
 torch-summary
 pretrainedmodels
 efficientnet_pytorch
 facenet-pytorch
-autoattack @ git+https://github.com/fra31/auto-attack@6482e4d6fbeeb51ae9585c41b16d50d14576aadc
+# autoattack @ git+https://github.com/fra31/auto-attack@6482e4d6fbeeb51ae9585c41b16d50d14576aadc

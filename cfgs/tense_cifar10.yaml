@@ -10,8 +10,8 @@ data : {
   validation_ratio: 0,
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
-  label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 140,
+  label_dict: ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'],
+  batch_size: 10,
 }
 
 model_teacher: {
@@ -70,6 +70,7 @@ adversarial: {
   step_size: 0.007,
   epsilon: 0.031,
   norm: np.inf,
+  # norm: 2,
 }
 
 # Support sklearn metrics or custom metrics

@@ -1,17 +1,16 @@
-import time
 import torch
 import numpy as np
-from tqdm import tqdm
 import torch.nn as nn
-from utils.attack import generate_adversarial, generate_adversarial2
-from utils.general import convert_size
+from tqdm import tqdm
+from utils.general import convert_size, to_PILImage
+from utils.attacks import generate_TRADES, generate_PGD
 
-      
 def train_epoch(
         epoch, num_epochs, device,
         model_robust, model_teacher,
         train_loader, train_metrics,
-        criterion, optimizer, cfg
+        criterion, optimizer, attacker,
+        cfg,
     ):
     ## training-the-model
     with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
@@ -21,16 +20,15 @@ def train_epoch(
         model_teacher.train()
         for batch_idx, (inputs, targets) in pbar:
             ## move-tensors-to-GPU
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+            inputs, targets = inputs.to(device), targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            x_adv = generate_adversarial(model_robust, inputs, cfg.get("adversarial"))
-            # x_adv = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
+            # adv_inputs = attacker.perturb_PGD(inputs, targets)
+            adv_inputs = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
-            out_adv = model_robust(x_adv)
+            out_adv = model_robust(adv_inputs)
             out_natural = model_robust(inputs)
             out_orig = model_teacher(inputs)
             ## forward model and compute loss
@@ -60,10 +58,11 @@ def train_epoch(
     
 def valid_epoch(
         device, model_robust, model_teacher,
-        valid_loader, valid_metrics,
-        criterion, cfg, train_loss, train_acc
+        valid_loader, valid_metrics, criterion,
+        train_loss, train_acc, attacker, cfg
     ):
     #validate-the-model
+    criterion_ori = nn.CrossEntropyLoss()
     with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
         pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
         with torch.no_grad():
@@ -74,19 +73,11 @@ def valid_epoch(
             model_teacher.eval()
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
-                inputs = inputs.to(device)
-                targets = targets.to(device)
-                # generate adversarial_sample
-                x_adv = generate_adversarial(model_robust, inputs, cfg.get("adversarial"))
-                # x_adv = generate_adversarial2(model_robust, inputs, cfg.get("adversarial"))
-                # forward model and compute loss
-                out_adv = model_robust(x_adv)
-                out_natural = model_robust(inputs)
-                out_orig = model_teacher(inputs)
-                loss = criterion(out_adv, out_natural, out_orig, targets)
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = model_robust(inputs)
+                loss = criterion_ori(outputs, targets)
                 valid_loss += loss.item() * inputs.size(0)
                 ## calculate training metrics
-                outputs = model_robust(inputs)
                 _, preds = torch.max(outputs.data, dim=-1)
                 correct += torch.sum(preds.data == targets.data).item()
 
@@ -97,6 +88,45 @@ def valid_epoch(
         valid_acc = correct/len(valid_loader.dataset)
         valid_metrics.step(all_labels, all_preds)
 
+    print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))
+    return (
+        valid_loss, valid_acc,
+        valid_metrics.last_step_metrics(),
+    )
+
+def valid_adv_epoch(
+        device, model_robust, model_teacher,
+        valid_loader, valid_metrics, criterion,
+        train_loss, train_acc, attacker, cfg
+    ):
+    #validate-the-model
+    criterion_ori = nn.CrossEntropyLoss()
+    with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
+        pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
+        with torch.no_grad():
+            correct = 0
+            valid_loss = 0
+            all_labels = []
+            all_preds = []
+            model_teacher.eval()
+            model_robust.eval()
+            for batch_idx, (inputs, targets) in pbar:
+                inputs, targets = inputs.to(device), targets.to(device)
+                adv_inputs = attacker.perturb_PGD(inputs, targets)
+                outputs = model_robust(adv_inputs)
+                loss = criterion_ori(outputs, targets)
+                valid_loss += loss.item() * inputs.size(0)
+                ## calculate training metrics
+                _, preds = torch.max(outputs.data, dim=-1)
+                correct += torch.sum(preds.data == targets.data).item()
+
+                all_labels.extend(targets.cpu().detach().numpy())
+                all_preds.extend(preds.cpu().detach().numpy())
+
+        valid_loss = valid_loss/len(valid_loader.dataset)
+        valid_acc = correct/len(valid_loader.dataset)
+        valid_metrics.step(all_labels, all_preds)
+        
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))
     return (
         valid_loss, valid_acc,
