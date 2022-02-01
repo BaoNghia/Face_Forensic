@@ -10,6 +10,7 @@ data/*
 !data/example_data
 !data/*.py
 !data/csv
+!data/csv10
 # !data/FaceForensics
 
 #checkpoint
