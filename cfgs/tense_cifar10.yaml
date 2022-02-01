@@ -11,7 +11,7 @@ data : {
   validation_csv_name : ./data/csv/valid.csv,
   test_csv_name: ./data/csv/test.csv,
   label_dict: ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'],
-  batch_size: 10,
+  batch_size: 140,
 }
 
 model_teacher: {
@@ -49,7 +49,7 @@ loss: {
 # Do not modify this key (eg. "name": SGD)
 optimizer: {
   name: SGD,
-  lr: 1e-2,
+  lr: 0.1,
   momentum: 0.9,
   weight_decay: 2e-4,
 }

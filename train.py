@@ -84,7 +84,7 @@ def main(cfg, all_model, log_dir, checkpoint=None):
     for epoch in range(num_epochs):
         t1 = time.time()
         adjust_learning_rate(optimizer, epoch, init_lr)
-        print(('\n' + '%13s' * 3) % ('Epoch', 'gpu_mem', 'mean_loss'))
+        print(('\n' + '%13s' * 4) % ('Epoch', 'gpu_mem', 'mean_loss', 'mean_acc'))
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
                                                                 model_robust, model_teacher,
                                                                 train_loader, train_metrics,
@@ -102,8 +102,8 @@ def main(cfg, all_model, log_dir, checkpoint=None):
         ## log to file 
         logging.info("\n------Epoch {} / {}, Training time: {:.4f} seconds------"\
             .format(epoch, num_epochs, (time.time() - t1)))
-        logging.info(f"Training loss: {train_loss} \n Training metrics: {train_result}")
-        logging.info(f"Validation loss: {valid_loss} \n Validation metrics: {valid_result}")
+        logging.info(f"Training loss: {train_loss} \nTraining metrics: {train_result}")
+        logging.info(f"Validation loss: {valid_loss} \nValidation metrics: {valid_result}")
         
         ## tensorboard writer
         tb_writer.add_scalar("Training Loss", train_loss, epoch)
