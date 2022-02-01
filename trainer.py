@@ -16,7 +16,6 @@ def train_epoch(
     with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
         train_loss = 0
         mloss = 0
-        macc = 0
         correct = 0
         model_teacher.train()
         for batch_idx, (inputs, targets) in pbar:
@@ -46,7 +45,7 @@ def train_epoch(
 
             ## pbar
             mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
-            macc = (macc * batch_idx + correct)/((batch_idx + 1)*len(inputs))
+            macc = (correct) / ((batch_idx + 1) * inputs.size(0))
             mloss = (mloss * batch_idx + loss.item())/(batch_idx + 1)
             s = ('%13s' * 2 + '%13.4g' * 2) % ('%g/%g' % (epoch, num_epochs - 1), mem, mloss, macc)
             pbar.set_description(s)
