@@ -16,7 +16,7 @@ def train_epoch(
     with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
         train_loss = 0
         mloss = 0
-        correct = 0
+        macc = 0
         model_teacher.train()
         for batch_idx, (inputs, targets) in pbar:
             ## move-tensors-to-GPU
@@ -38,21 +38,21 @@ def train_epoch(
             ## update training-loss
             train_loss += loss.item() * inputs.size(0)
             ## calculate training metrics
-            outputs = model_robust(inputs)
+            _,_, outputs = model_robust(inputs)
             _, preds = torch.max(outputs.data, dim=-1)
-            correct += torch.sum(preds.data == targets.data).item()
+            correct = torch.sum(preds.data == targets.data).item()
             train_metrics.step(preds.cpu().detach().numpy(), targets.cpu().detach().numpy())
 
             ## pbar
             mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
-            macc = (correct) / ((batch_idx + 1) * inputs.size(0))
+            macc = (macc * batch_idx + correct/inputs.size(0))/(batch_idx + 1)
             mloss = (mloss * batch_idx + loss.item())/(batch_idx + 1)
             s = ('%13s' * 2 + '%13.4g' * 2) % ('%g/%g' % (epoch, num_epochs - 1), mem, mloss, macc)
             pbar.set_description(s)
             pbar.set_postfix(lr = optimizer.param_groups[0]['lr'])
 
         train_loss = train_loss/len(train_loader.dataset)
-        train_acc = correct/len(train_loader.dataset)
+        train_acc = macc
 
     return train_loss, train_acc, train_metrics.epoch()
         
@@ -67,7 +67,7 @@ def valid_epoch(
     with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
         pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
         with torch.no_grad():
-            correct = 0
+            total_correct = 0
             valid_loss = 0
             all_labels = []
             all_preds = []
@@ -75,18 +75,19 @@ def valid_epoch(
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
                 inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model_robust(inputs)
+                _,_, outputs = model_robust(inputs)
+
                 loss = criterion_ori(outputs, targets)
                 valid_loss += loss.item() * inputs.size(0)
                 ## calculate training metrics
                 _, preds = torch.max(outputs.data, dim=-1)
-                correct += torch.sum(preds.data == targets.data).item()
+                total_correct += torch.sum(preds.data == targets.data).item()
 
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())
 
         valid_loss = valid_loss/len(valid_loader.dataset)
-        valid_acc = correct/len(valid_loader.dataset)
+        valid_acc = total_correct/len(valid_loader.dataset)
         valid_metrics.step(all_labels, all_preds)
 
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))
@@ -105,7 +106,7 @@ def valid_adv_epoch(
     with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
         pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
         with torch.no_grad():
-            correct = 0
+            total_correct = 0
             valid_loss = 0
             all_labels = []
             all_preds = []
@@ -114,18 +115,19 @@ def valid_adv_epoch(
             for batch_idx, (inputs, targets) in pbar:
                 inputs, targets = inputs.to(device), targets.to(device)
                 adv_inputs = attacker.perturb_PGD(inputs, targets)
-                outputs = model_robust(adv_inputs)
+                _,_, outputs = model_robust(inputs)
+
                 loss = criterion_ori(outputs, targets)
                 valid_loss += loss.item() * inputs.size(0)
                 ## calculate training metrics
                 _, preds = torch.max(outputs.data, dim=-1)
-                correct += torch.sum(preds.data == targets.data).item()
+                total_correct += torch.sum(preds.data == targets.data).item()
 
                 all_labels.extend(targets.cpu().detach().numpy())
                 all_preds.extend(preds.cpu().detach().numpy())
 
         valid_loss = valid_loss/len(valid_loader.dataset)
-        valid_acc = correct/len(valid_loader.dataset)
+        valid_acc = total_correct/len(valid_loader.dataset)
         valid_metrics.step(all_labels, all_preds)
 
     print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))

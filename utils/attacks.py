@@ -82,8 +82,8 @@ class Attacks(nn.Module):
         for _ in range(self.perturb_steps):
             x_adv.requires_grad_()
             with torch.enable_grad():
-                loss_kl = self.criterion_kl(F.log_softmax(self.model(x_adv), dim=1),
-                                            F.softmax(self.model(x_natural), dim=1))
+                loss_kl = self.criterion_kl(F.log_softmax(self.model(x_adv)[-1], dim=1),
+                                            F.softmax(self.model(x_natural)[-1], dim=1))
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             optimal_perturbation = optimize_linear(grad, self.step_size, self.norm)
             x_adv = x_adv.detach() + optimal_perturbation
@@ -104,8 +104,8 @@ class Attacks(nn.Module):
             for _ in range(self.perturb_steps):
                 x_adv.requires_grad_()
                 with torch.enable_grad():
-                    loss_kl = self.criterion_kl(F.log_softmax(self.model(x_adv), dim=1),
-                                                F.softmax(self.model(x_natural), dim=1))
+                    loss_kl = self.criterion_kl(F.log_softmax(self.model(x_adv)[-1], dim=1),
+                                                F.softmax(self.model(x_natural)[-1], dim=1))
                 grad = torch.autograd.grad(loss_kl, [x_adv])[0]
                 x_adv = x_adv.detach() + self.step_size * torch.sign(grad.detach())
                 x_adv = torch.min(torch.max(x_adv, x_natural - self.epsilon), x_natural + self.epsilon)
@@ -159,8 +159,8 @@ def generate_PGD(model, x_natural, cfg):
     for _ in range(perturb_steps):
         x_adv.requires_grad_()
         with torch.enable_grad():
-            loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                    F.softmax(model(x_natural), dim=1))
+            loss_kl = criterion_kl(F.log_softmax(model(x_adv)[-1], dim=1),
+                                    F.softmax(model(x_natural)[-1], dim=1))
         x_adv_grad = torch.autograd.grad(loss_kl, [x_adv])[0]
         optimal_perturbation = optimize_linear(x_adv_grad, step_size, norm)
         x_adv = x_adv.detach() + optimal_perturbation
@@ -188,8 +188,8 @@ def generate_TRADES(model, x_natural, cfg):
         for _ in range(perturb_steps):
             x_adv.requires_grad_()
             with torch.enable_grad():
-                loss_kl = criterion_kl(F.log_softmax(model(x_adv), dim=1),
-                                       F.softmax(model(x_natural), dim=1))
+                loss_kl = criterion_kl(F.log_softmax(model(x_adv)[-1], dim=1),
+                                       F.softmax(model(x_natural)[-1], dim=1))
             grad = torch.autograd.grad(loss_kl, [x_adv])[0]
             x_adv = x_adv.detach() + step_size * torch.sign(grad.detach())
             x_adv = torch.min(torch.max(x_adv, x_natural - epsilon), x_natural + epsilon)

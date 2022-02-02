@@ -22,11 +22,15 @@ class LBGATLoss(nn.Module):
         self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, out_adv, out_natural, out_orig, y):
-        loss_mse = self.fl(out_orig, y) + self.mse(out_orig, out_adv)
-        loss_kl = (1.0 / out_orig.size(0)) * \
+        features_adv, x4s_adv, outputs_adv = out_adv
+        features_natural, x4s_natural, outputs_natural = out_natural
+        features_orig, x4s_orig, outputs_orig = out_orig
+        
+        loss_mse = self.fl(outputs_orig, y) + self.mse(outputs_orig, outputs_adv)
+        loss_kl = (1.0 / y.size(0)) * \
             self.criterion_kl(
-                F.log_softmax(out_adv, dim=1), 
-                F.softmax(out_natural, dim=1)
+                F.log_softmax(outputs_adv, dim=1), 
+                F.softmax(outputs_natural, dim=1)
             )
         loss = loss_mse + self.alpha * loss_kl
         return loss

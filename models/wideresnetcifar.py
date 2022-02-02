@@ -69,6 +69,7 @@ class WideResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
         self.fc = nn.Linear(nChannels[3], num_classes)
         self.nChannels = nChannels[3]
 
@@ -87,8 +88,8 @@ class WideResNet(nn.Module):
         out = self.block1(out)
         out = self.block2(out)
         out = self.block3(out)
-        out = self.relu(self.bn1(out))
-        out = self.avgpool(out)
-        out = torch.flatten(out, 1)
-        # out = out.view(-1, self.nChannels)
-        return self.fc(out) 
+        feature = self.relu(self.bn1(out))
+        x4 = self.avgpool(feature)
+        x4 = self.flatten(x4)
+        logits = self.fc(x4)
+        return (feature, x4, logits)
