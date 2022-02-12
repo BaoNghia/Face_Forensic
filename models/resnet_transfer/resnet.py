@@ -79,5 +79,6 @@ class ResNet_transfer(nn.Module):
         self.model = load_resnet(model_name, num_classes, pretrained)
 
     def forward(self, data):
-        return self.model(data)
+        logits = self.model(data)
+        return None, None, logits
     

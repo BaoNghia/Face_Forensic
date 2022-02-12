@@ -14,8 +14,15 @@ data : {
   batch_size: 140,
 }
 
+# model_teacher: {
+#   model.class: models.resnetcifar.ResNet18_cifar,
+#   num_classes: 10,
+# }
+
 model_teacher: {
-  model.class: models.resnetcifar.ResNet18_cifar,
+  model.class: models.resnet_transfer.resnet.ResNet_transfer,
+  model_name: resnet18,
+  pretrained: true,
   num_classes: 10,
 }
 
@@ -23,20 +30,6 @@ model_robust: {
   model.class: models.wideresnetcifar.WideResNet,
   num_classes: 10,
 }
-
-# model_teacher: {
-#   model.class: models.resnet_transfer.resnet.ResNet_transfer,
-#   model_name: resnet18,
-#   pretrained: true,
-#   num_classes: 100,
-# }
-
-# model_robust: {
-#   model.class: models.wideresnet_tranfer.wresnet.WideResNet_transfer,
-#   model_name: wide_resnet50_2,
-#   pretrained: true,
-#   num_classes: 100,
-# }
 
 loss: {
   name: LBGATLoss,

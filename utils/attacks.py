@@ -70,9 +70,8 @@ class Attacks(nn.Module):
         self.ce_loss = nn.CrossEntropyLoss(reduction='sum')
         self.model = model
 
-    def perturb_PGD(self, x_natural, targets):
+    def perturb_TRADES(self, x_natural, targets):
         self.model.eval()
-
         ## generate adversarial example
         eta = torch.zeros_like(x_natural).uniform_(-self.epsilon, self.epsilon)
         eta = clip_eta(eta, self.norm, self.epsilon)
@@ -95,7 +94,7 @@ class Attacks(nn.Module):
         x_adv = Variable(x_adv, requires_grad=False)
         return x_adv
 
-    def perturb_TRADES(self, x_natural, targets):
+    def perturb_TRADES_orig(self, x_natural, targets):
         self.model.eval()
         batch_size = len(x_natural)
         eta = 0.001 * torch.randn_like(x_natural).detach()
