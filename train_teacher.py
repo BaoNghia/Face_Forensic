@@ -19,17 +19,15 @@ from data_loader.dataloader import get_dataset, get_dataloader
 from data_loader.cifar_dataloader import cifar10_dataloader, cifar100_dataloader
 
 # from torchsampler import ImbalancedDatasetSampler
-def main(cfg, model_robust, model_teacher, log_dir):            
+def main(cfg, model_teacher, log_dir):
     # Checking cuda
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logging.info("Using device: {} ".format(device))
 
     # Convert to suitable device
     if device.type == 'cpu':
-        model_robust = model_robust.to(device)
         model_teacher = model_teacher.to(device)
     else:
-        model_robust = nn.DataParallel(model_robust).to(device)
         model_teacher = nn.DataParallel(model_teacher).to(device)
 
     # create a metric for evaluating
@@ -42,20 +40,16 @@ def main(cfg, model_robust, model_teacher, log_dir):
     ## initlize optimizer from config
     ## optimizer
     optimizer_module, optimizer_params = get_optimizer(cfg)
-    optimizer = optimizer_module(model_robust.parameters(), **optimizer_params)
-    ## initlize sheduler_lr from config
-    init_lr = optimizer_params["lr"]
+    optimizer = optimizer_module(model_teacher.parameters(), **optimizer_params)
+    ## initlize sheduler from config
     scheduler_module, scheduler_params = get_lr_scheduler(cfg)
     scheduler = scheduler_module(optimizer, **scheduler_params)
     ## get Loss function
     loss_fn, loss_params = get_loss_fn(cfg)
     criterion = loss_fn(**loss_params)
-    ## Create attacker
-    attacker = Attacks(model = model_robust, config = cfg.get("adversarial"))
 
     # using parsed configurations to create a dataset
     # Create dataset
-    num_of_class = len(cfg["data"]["label_dict"])
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
     train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
@@ -73,20 +67,19 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
     for epoch in range(num_epochs):
         t1 = time.time()
-        adjust_learning_rate(optimizer, epoch, init_lr)
         print(('\n' + '%13s' * 4) % ('Epoch', 'gpu_mem', 'mean_loss', 'mean_acc'))
-        train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
-                                                                model_robust, model_teacher,
-                                                                train_loader, train_metrics,
-                                                                criterion, optimizer, attacker,
-                                                                cfg,
+        train_loss, train_acc, train_result = trainer.train_teacher_epoch( \
+            epoch, num_epochs, device, model_teacher,\
+            train_loader, train_metrics,\
+            criterion, optimizer, cfg\
         )
 
-        valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_teacher,
-                                                                valid_loader, valid_metrics, criterion,
-                                                                train_loss, train_acc, attacker, cfg
+        valid_loss, valid_acc, valid_result = trainer.valid_teacher_epoch( \
+            device, model_teacher,\
+            valid_loader, valid_metrics,\
+            criterion, train_loss, train_acc, cfg\
         )
-        # scheduler.step(valid_loss)
+        scheduler.step(valid_loss)
 
         print("Train result: ", train_result)
         print("Valid result: ", valid_result)
@@ -104,22 +97,22 @@ def main(cfg, model_robust, model_teacher, log_dir):
             tb_writer.add_scalar(f"Validation {metric_name}", valid_result[metric_name], epoch)
         
         # Save model
-        robust_checkpoint = {
+        model_checkpoint = {
             'epoch': epoch,
             'valid_loss': valid_loss,
-            'model': model_robust,
-            'state_dict': model_robust.state_dict(),
+            'model': model_teacher,
+            'state_dict': model_teacher.module.state_dict(),
             'optimizer': optimizer.state_dict(),
         }
-        last_cpkt_path = save_last_checkpoint(robust_checkpoint, log_dir, name = "robust")
+        last_cpkt_path = save_last_checkpoint(model_checkpoint, log_dir, name = "")
         if valid_loss < best_valid_lost:
             best_valid_lost = valid_loss
-            best_cpkt_path = save_best_checkpoint(robust_checkpoint, log_dir, name = "robust")
+            best_cpkt_path = save_best_checkpoint(model_checkpoint, log_dir, name = "")
 
     ## logging report
-    test_model = model_robust.to(device)
+    test_model = model_teacher.to(device)
     test_model.eval()
-    report = tester.test_result(test_model, test_loader, device, None)
+    report = tester.test_result(test_model, test_loader, device, label_name = cfg.get("data")["label_dict"])
     # report = tester.test_result(test_model, valid_loader, device, cfg.get("data")["label_dict"])
     logging.info(f"\nClassification Report: \n {report}")
     logging.info("Completed in {:.3f} seconds. ".format(time.time() - t0))
@@ -131,16 +124,11 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
 
 if __name__ == "__main__":
-    tmp = 'logs/Face_Forensic_teacher/2022-02-23-08h32/_best.ckpt'
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
-    parser.add_argument('-nat_ckpt', '--teacher_checkpoint', default=tmp, help = 'checkpoint path of teacher model')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_teacher.yaml', help='YAML file')
     parser.add_argument('-ckpt', '--pretrained', default=None, help = 'checkpoint path for transfer learning')
-
     args = parser.parse_args()
-    teacher_checkpoint = args.teacher_checkpoint
     pretrained = args.pretrained
-    assert teacher_checkpoint != None, 'Error: no checkpoint file found!'
 
     # read configure file
     config = yaml_loader(args.configure) # config dict
@@ -161,31 +149,23 @@ if __name__ == "__main__":
     logging.info(f"Project name: {project_name}")
     logging.info(f"CONFIGS: \n {config}")
 
-    ## Create model and (optinal) load pretrained
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    ## Create model
     all_model = model_loader(config)
-    teacher_checkpoint = torch.load(teacher_checkpoint)
-    # model_teacher = teacher_checkpoint['model']
-    model_teacher = all_model['model_teacher'] 
-    model_teacher.load_state_dict(teacher_checkpoint['state_dict'])
-    # model_teacher = nn.DataParallel(model_teacher).to(device)
-    model_robust = all_model['model_robust']
+    model = all_model['model_teacher']
     if pretrained is not None:
         print("...Load Pretrain from {}".format(pretrained))
         pretrained = torch.load(pretrained)
-        model_robust.load_state_dict(pretrained['state_dict'])
+        model.load_state_dict(pretrained['state_dict'])
         print("...Pretrain is loaded")
     else:
         print("Train from scratch")
-
-    num_parameter = sum(p.numel() for p in model_robust.parameters())
     print("Create model Successfully !!!")
-    logging.info(f"Number parameters of model: {num_parameter}")
+    num_parameter = sum(p.numel() for p in model.parameters())
     print(f"Number parameters of model: {num_parameter}")
+    logging.info(f"Number parameters of model: {num_parameter}")
 
     best_ckpt_path = main(
         cfg = config,
-        model_robust = model_robust, 
-        model_teacher = model_teacher,
+        model_teacher = model,
         log_dir = log_dir,
     )

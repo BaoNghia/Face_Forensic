@@ -27,12 +27,11 @@ def test_result(model, test_loader, device, label_name):
         for inputs, targets in test_loader:
             inputs = inputs.to(device)
             targets = targets.to(device)
-            
             with torch.no_grad():
-                outputs = model(inputs)
-                outputs_softmax = torch.softmax(outputs, dim=-1)
+                _, _, outputs = model(inputs)
+                _, preds = torch.max(outputs.data, dim=-1)
+                # outputs_softmax = torch.softmax(outputs, dim=-1)
             
-            probs, preds = torch.max(outputs_softmax.data, dim=-1)
             list_labels.extend(targets.cpu().detach().numpy())
             list_preds.extend(preds.cpu().detach().numpy())
     return (classification_report(list_labels, list_preds, target_names=label_name, zero_division = 1))

@@ -5,6 +5,7 @@ from tqdm import tqdm
 from utils.general import convert_size, to_PILImage
 from utils.attacks import generate_TRADES, generate_PGD
 
+
 def train_epoch(
         epoch, num_epochs, device,
         model_robust, model_teacher,
@@ -53,10 +54,8 @@ def train_epoch(
 
         train_loss = train_loss/len(train_loader.dataset)
         train_acc = macc
-
     return train_loss, train_acc, train_metrics.epoch()
         
-    
 def valid_epoch(
         device, model_robust, model_teacher,
         valid_loader, valid_metrics, criterion,
@@ -135,3 +134,85 @@ def valid_adv_epoch(
         valid_loss, valid_acc,
         valid_metrics.last_step_metrics(),
     )
+
+
+def train_teacher_epoch(
+        epoch, num_epochs, device, model,
+        train_loader, train_metrics,
+        criterion, optimizer, cfg,
+    ):
+    ## training-the-model
+    with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
+        train_loss = 0
+        mloss = 0
+        macc = 0
+        model.train()
+        for batch_idx, (inputs, targets) in pbar:
+            ## move-tensors-to-GPU
+            inputs, targets = inputs.to(device), targets.to(device)
+            optimizer.zero_grad()
+            _, _, outputs = model(inputs)
+            ## forward model and compute loss
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+            ## update training-loss
+            train_loss += loss.item() * inputs.size(0)
+            ## calculate training metrics
+            # _,_, outputs = model_robust(inputs)
+            _, preds = torch.max(outputs.data, dim=-1)
+            correct = torch.sum(preds.data == targets.data).item()
+            train_metrics.step(preds.cpu().detach().numpy(), targets.cpu().detach().numpy())
+
+            ## pbar
+            mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
+            macc = (macc * batch_idx + correct/inputs.size(0))/(batch_idx + 1)
+            mloss = (mloss * batch_idx + loss.item())/(batch_idx + 1)
+            s = ('%13s' * 2 + '%13.4g' * 2) % ('%g/%g' % (epoch, num_epochs - 1), mem, mloss, macc)
+            pbar.set_description(s)
+            pbar.set_postfix(lr = optimizer.param_groups[0]['lr'])
+
+        train_loss = train_loss/len(train_loader.dataset)
+        train_acc = macc
+    return train_loss, train_acc, train_metrics.epoch()
+
+
+def valid_teacher_epoch(
+        device, model_teacher,
+        valid_loader, valid_metrics,
+        criterion, train_loss, train_acc,
+        cfg
+    ):
+    # validate-the-model
+    with tqdm(enumerate(valid_loader), total = len(valid_loader)) as pbar:
+        pbar.set_description(('%13s'  + '%13s' * 3) % ('Train Loss', 'Val Loss', 'Train Acc', 'Val Acc'))
+        with torch.no_grad():
+            total_correct = 0
+            valid_loss = 0
+            all_labels = []
+            all_preds = []
+            model_teacher.eval()
+            for batch_idx, (inputs, targets) in pbar:
+                inputs, targets = inputs.to(device), targets.to(device)
+                _,_, outputs = model_teacher(inputs)
+                loss = criterion(outputs, targets)
+                valid_loss += loss.item() * inputs.size(0)
+                ## calculate training metrics
+                _, preds = torch.max(outputs.data, dim=-1)
+                total_correct += torch.sum(preds.data == targets.data).item()
+
+                all_labels.extend(targets.cpu().detach().numpy())
+                all_preds.extend(preds.cpu().detach().numpy())
+
+        valid_loss = valid_loss/len(valid_loader.dataset)
+        valid_acc = total_correct/len(valid_loader.dataset)
+        valid_metrics.step(all_labels, all_preds)
+
+    print(('%13.4g' + '%13.4g'*3) % (train_loss, valid_loss, train_acc, valid_acc))
+    return (
+        valid_loss, valid_acc,
+        valid_metrics.last_step_metrics(),
+    )
+
+
+    

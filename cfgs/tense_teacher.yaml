@@ -1,7 +1,7 @@
 session: {
   _comment_: exp1,
   save_path: ./logs,
-  project_name : Face_Forensic,
+  project_name : Face_Forensic_teacher,
 }
 
 # Support sklearn metrics or custom metrics
@@ -17,7 +17,7 @@ data : {
   validation_csv_name : ./data/csv10/valid.csv,
   test_csv_name: ./data/csv10/test.csv,
   label_dict: ["real", "fake"], # sort by class_id
-  batch_size: 2,
+  batch_size: 64,
 }
 
 model_teacher: {
@@ -33,9 +33,8 @@ model_robust: {
 }
 
 loss: {
-  name: LBGATLoss,
-  weight: [4,1],
-  beta: 1,
+  name: FocalLoss,
+  alpha: [4,1],
 }
 
 adversarial: {
@@ -65,3 +64,4 @@ scheduler: {
   patience: 10,
   factor: 0.1,
 }
+

@@ -1,4 +1,5 @@
 from torchvision import models, transforms
+from torchsummary import summary
 import torch.nn as nn
 import sys
 import os
@@ -59,7 +60,7 @@ def load_resnet(name, num_class = 2, pretrained = True):
     if not name in ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']:
         raise ValueError("name must be in {'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'}")
         sys.exit()
-    print(f'Loading: {name}. Using pretrained: {pretrained}')
+    print(f'Loading: {name}. Using pretrained \'imagenet\': {pretrained}')
     model = getattr(models, name)(pretrained=pretrained)
     for param in model.parameters():
         param.requires_grad = True
@@ -82,3 +83,7 @@ class ResNet_transfer(nn.Module):
         logits = self.model(data)
         return None, None, logits
     
+if __name__ == '__main__':
+
+    model = ResNet_transfer('resnet50', num_classes=2, pretrained=True)
+    summary(model, (3,256,256))
