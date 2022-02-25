@@ -8,7 +8,6 @@ from sklearn.utils.class_weight import compute_class_weight
 from tqdm import tqdm
 
 
-
 def calc_mse_loss(df, df_main, class_name, group_id):
     category_grouped_df_main = df_main.groupby(class_name).count()[[group_id]]/len(df_main)*100
     category_grouped_df = df.groupby(class_name).count()[[group_id]]/len(df)*100
@@ -31,7 +30,7 @@ def StratifiedGroupShuffleSplit(df_main, class_name: str, group_id: str, train_p
     assert(0 <= hparam_mse_wgt <= 1)
     assert(0 <= train_proportion <= 1)
     val_test_proportion = (1-train_proportion)/2
- 
+
     subject_grouped_df_main = df_main.groupby([group_id], sort=False, as_index=False)
     
     i = 0
@@ -86,20 +85,18 @@ def StratifiedGroupShuffleSplit(df_main, class_name: str, group_id: str, train_p
         # print(f"Group {i}. Loss train: {loss_train} | Loss val: {loss_val} | Loss test: {loss_test}")
         i += 1
 
-    print(df_train.groupby(class_name).count())
-    print(df_val.groupby(class_name).count())
-    print(df_test.groupby(class_name).count())
     return df_train, df_val, df_test
 
 
 def get_part_of_data(data, size = 0.1):
-    train_size = 1 - (size * 2)
-    _, _, df_test = StratifiedGroupShuffleSplit(
-        data, 
-        class_name = 'class',
-        group_id = 'group_id',
-        train_proportion = train_size,)
-    return df_test
+    from sklearn.model_selection import train_test_split
+
+    y = data["class"]
+    x_train, x_test, y_train, y_test = train_test_split(data, y, test_size=size, stratify=y, random_state=42)
+    train_data = data.iloc[x_train.index, :]
+    test_data = data.iloc[x_test.index, :]
+    return train_data.reset_index(drop=True), test_data.reset_index(drop=True)
+    
 
 def sklearn_StratifiedGroupShuffleSplit(df_main):
     from sklearn.model_selection import StratifiedGroupKFold
@@ -118,14 +115,7 @@ def sklearn_StratifiedGroupShuffleSplit(df_main):
         print("LEN TRAIN: ", len(y[train_idxs]))
         print("LEN TEST: ", len(y[test_idxs]))
 
-
-def data_split(data, test_size):
-    X = data["image"]
-    y = data["class"]
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=test_size, stratify=y, random_state=42)
-    train_data = data.iloc[x_train.index, :]
-    test_data = data.iloc[x_test.index, :]
-    return train_data.reset_index(drop=True), test_data.reset_index(drop=True)
+    return
 
 
 DATASET_PATHS = {
@@ -176,30 +166,50 @@ if __name__ == "__main__":
                     meta_data = [f.split("/") for f in files]
                     data['group_id'].extend(f'{f[-5]}/{f[-2]}' for f in meta_data)
     
+    
     df_main = pd.DataFrame(data)
-    df_main.to_csv('data/csv/all.csv')
-    # print(pd.concat([df_main.head(5), df_main.sample(5)]))
+    os.makedirs('data/csv', exist_ok=True)
+    df_main.to_csv('data/csv/all_data.csv')
 
     # Split data
+    class_name = 'class' # name of y column
+    group_id = 'group_id' # name of group column
     if not os.path.exists('data/csv/train.csv'):
         df_train, df_val, df_test = StratifiedGroupShuffleSplit(df_main, class_name = 'class', group_id = 'group_id')
         df_train.to_csv('data/csv/train.csv')
         df_val.to_csv('data/csv/val.csv')
         df_test.to_csv('data/csv/test.csv')
+        print("Train: ", df_train[class_name].value_counts().to_dict())
+        print("Valid", df_val[class_name].value_counts().to_dict())
+        print("Test", df_test[class_name].value_counts().to_dict())
     else:
         df_train = pd.read_csv('data/csv/train.csv')
         df_val = pd.read_csv('data/csv/val.csv')
         df_test = pd.read_csv('data/csv/test.csv')
 
-    # get 10% data
-    print("Get partial data")
+    # # get partial data
+    print("\nGet partial data")
     time.sleep(1)
-    train_10 = get_part_of_data(df_train, size = 0.1)
-    valid_10 = get_part_of_data(df_val, size = 0.1)
-    test_10 = get_part_of_data(df_test, size = 0.1)
+    _, train_10 = get_part_of_data(df_train, size = 0.1)
+    _, valid_10 = get_part_of_data(df_val, size = 0.2)
+    _, test_10 = get_part_of_data(df_test, size = 0.2)
 
-    path = "./data/csv10"
-    os.makedirs(path, exist_ok=True)
-    train_10.to_csv(os.path.join(path, "train.csv"), index=None)
-    valid_10.to_csv(os.path.join(path, "valid.csv"), index=None)
-    test_10.to_csv(os.path.join(path, "test.csv"), index=None)
+    print(train_10[class_name].value_counts().to_dict())
+    print(valid_10[class_name].value_counts().to_dict())
+    print(test_10[class_name].value_counts().to_dict())
+    print(test_10[group_id].value_counts().to_dict())
+
+    train_group_set = train_10[group_id].unique().tolist()
+    valid_group_set = valid_10[group_id].unique().tolist()
+    test_group_set = test_10[group_id].unique().tolist()
+    
+    if len(np.intersect1d(train_group_set, valid_group_set)) == 0\
+    and len(np.intersect1d(train_group_set, test_group_set)) == 0\
+    and len(np.intersect1d(valid_group_set, test_group_set)) == 0:
+        path = "./data/csv10"
+        os.makedirs(path, exist_ok=True)
+        train_10.to_csv(os.path.join(path, "train.csv"), index=None)
+        valid_10.to_csv(os.path.join(path, "valid.csv"), index=None)
+        test_10.to_csv(os.path.join(path, "test.csv"), index=None)
+
+    print("Finished!!!")
