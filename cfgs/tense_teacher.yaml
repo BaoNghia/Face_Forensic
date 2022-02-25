@@ -35,6 +35,7 @@ model_robust: {
 loss: {
   name: FocalLoss,
   alpha: [4,1],
+  gamma: 5,
 }
 
 adversarial: {
@@ -46,7 +47,7 @@ adversarial: {
 
 # configure arguments of torch.optim.Optimizer
 # You can add other arguments for the Optimizer
-# Do not modify this key (eg. "name": SGD)
+# (ex. "name": SGD)
 optimizer: {
   name: SGD,
   lr: 1e-2,
@@ -54,14 +55,15 @@ optimizer: {
   weight_decay: 2e-4,
 }
 
+
 # configure arguments of torch.optim.lr_scheduler 
 # feel free to add other arguments for the sheduler
 # Do not modify this key (eg. "name": CosineAnnealingLR)
 scheduler: {
   name: ReduceLROnPlateau,
-  min_lr: 1e-4,
+  min_lr: 1e-5,
   mode: min,
-  patience: 10,
+  patience: 7,
   factor: 0.1,
 }
 

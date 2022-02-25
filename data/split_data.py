@@ -1,9 +1,122 @@
 import os, glob
+import time
 import argparse
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from tqdm import tqdm
+
+
+
+def calc_mse_loss(df, df_main, class_name, group_id):
+    category_grouped_df_main = df_main.groupby(class_name).count()[[group_id]]/len(df_main)*100
+    category_grouped_df = df.groupby(class_name).count()[[group_id]]/len(df)*100
+
+    df_temp = category_grouped_df_main.join(category_grouped_df, on = class_name, how = 'left', lsuffix = '_main')
+    df_temp.fillna(0, inplace=True)
+    df_temp['diff'] = (df_temp['group_id_main'] - df_temp['group_id'])**2
+    mse_loss = np.mean(df_temp['diff'])
+    return mse_loss
+
+
+def StratifiedGroupShuffleSplit(df_main, class_name: str, group_id: str, train_proportion=0.7, hparam_mse_wgt = 0.1):
+    np.random.seed(1234)
+    df_main = df_main.reindex(np.random.permutation(df_main.index)) # shuffle dataset
+    # create empty train, val and test datasets
+    df_train = pd.DataFrame()
+    df_val = pd.DataFrame()
+    df_test = pd.DataFrame()
+
+    assert(0 <= hparam_mse_wgt <= 1)
+    assert(0 <= train_proportion <= 1)
+    val_test_proportion = (1-train_proportion)/2
+ 
+    subject_grouped_df_main = df_main.groupby([group_id], sort=False, as_index=False)
+    
+    i = 0
+    for _, group in tqdm(subject_grouped_df_main):
+    # for _, group in subject_grouped_df_main:
+        df_group = pd.DataFrame(group)
+        if (i < 3):
+            if (i == 0):
+                df_train = pd.concat([df_train, df_group], ignore_index=True)
+                i += 1
+                continue
+            elif (i == 1):
+                df_val = pd.concat([df_val, df_group], ignore_index=True)
+                i += 1
+                continue
+            else:
+                df_test = pd.concat([df_test, df_group], ignore_index=True)
+                i += 1
+                continue
+        
+        tmp_df_train = pd.concat([df_train, df_group], ignore_index=True)
+        tmp_df_val = pd.concat([df_val, df_group], ignore_index=True)
+        tmp_df_test = pd.concat([df_test, df_group], ignore_index=True)
+
+        mse_loss_diff_train = calc_mse_loss(df_train, df_main, class_name, group_id) \
+            - calc_mse_loss(tmp_df_train, df_main, class_name, group_id)
+        mse_loss_diff_val = calc_mse_loss(df_val, df_main, class_name, group_id) \
+            - calc_mse_loss(tmp_df_val, df_main, class_name, group_id)
+        mse_loss_diff_test = calc_mse_loss(df_test, df_main, class_name, group_id) \
+            - calc_mse_loss(tmp_df_test, df_main, class_name, group_id)
+        total_records = len(df_train) + len(df_val) + len(df_test)
+
+        len_diff_train = (train_proportion - (len(df_train)/total_records))
+        len_diff_val = (val_test_proportion - (len(df_val)/total_records))
+        len_diff_test = (val_test_proportion - (len(df_test)/total_records)) 
+
+        len_loss_diff_train = len_diff_train * abs(len_diff_train)
+        len_loss_diff_val = len_diff_val * abs(len_diff_val)
+        len_loss_diff_test = len_diff_test * abs(len_diff_test)
+
+        loss_train = (hparam_mse_wgt * mse_loss_diff_train) + ((1-hparam_mse_wgt) * len_loss_diff_train)
+        loss_val = (hparam_mse_wgt * mse_loss_diff_val) + ((1-hparam_mse_wgt) * len_loss_diff_val)
+        loss_test = (hparam_mse_wgt * mse_loss_diff_test) + ((1-hparam_mse_wgt) * len_loss_diff_test)
+
+        if (max(loss_train,loss_val,loss_test) == loss_train):
+            df_train = tmp_df_train
+        elif (max(loss_train,loss_val,loss_test) == loss_val):
+            df_val = tmp_df_val
+        else:
+            df_test = tmp_df_test
+
+        # print(f"Group {i}. Loss train: {loss_train} | Loss val: {loss_val} | Loss test: {loss_test}")
+        i += 1
+
+    print(df_train.groupby(class_name).count())
+    print(df_val.groupby(class_name).count())
+    print(df_test.groupby(class_name).count())
+    return df_train, df_val, df_test
+
+
+def get_part_of_data(data, size = 0.1):
+    train_size = 1 - (size * 2)
+    _, _, df_test = StratifiedGroupShuffleSplit(
+        data, 
+        class_name = 'class',
+        group_id = 'group_id',
+        train_proportion = train_size,)
+    return df_test
+
+def sklearn_StratifiedGroupShuffleSplit(df_main):
+    from sklearn.model_selection import StratifiedGroupKFold
+
+    X = df_main.copy()
+    y = df_main['class'].values
+    groups = df_main['group_id'].values
+    orig_ratio = y.mean()
+    eps  = 0.1
+    print("ORIGINAL POSITIVE RATIO:", orig_ratio)
+    cv = StratifiedGroupKFold(n_splits=4, shuffle=True)
+    for fold, (train_idxs, test_idxs) in enumerate(cv.split(X, y, groups)):
+        print("Fold :", fold)
+        print("TRAIN POSITIVE RATIO: ", y[train_idxs].mean())
+        print("TEST POSITIVE RATIO: ", y[test_idxs].mean())
+        print("LEN TRAIN: ", len(y[train_idxs]))
+        print("LEN TEST: ", len(y[test_idxs]))
 
 
 def data_split(data, test_size):
@@ -14,16 +127,6 @@ def data_split(data, test_size):
     test_data = data.iloc[x_test.index, :]
     return train_data.reset_index(drop=True), test_data.reset_index(drop=True)
 
-def data2csv(path, data, split = True):
-    from sklearn.utils.class_weight import compute_class_weight
-    os.makedirs(path, exist_ok=True) 
-    train, test = data_split(data, test_size = 0.15)
-    train, valid = data_split(train, test_size = 0.1764)
-    data.to_csv(os.path.join(path, "all_data.csv"), index=None)
-    train.to_csv(os.path.join(path, "train.csv"), index=None)
-    valid.to_csv(os.path.join(path, "valid.csv"), index=None)
-    test.to_csv(os.path.join(path, "test.csv"), index=None)
-    return train, valid, test
 
 DATASET_PATHS = {
     'original': 'original_sequences/youtube',
@@ -33,6 +136,7 @@ DATASET_PATHS = {
     'FaceShifter': 'manipulated_sequences/FaceShifter',
     'NeuralTextures': 'manipulated_sequences/NeuralTextures'
 }
+
 DEEPFEAKES_DETECTION_DATASET = {
     'DeepFakeDetection_original': 'original_sequences/actors',
     'DeepFakeDetection': 'manipulated_sequences/DeepFakeDetection',
@@ -47,7 +151,7 @@ if __name__ == "__main__":
                    default='all')
     args = p.parse_args()
 
-    data = {"image": [], "class": []}
+    data = {"image": [], "class": [], 'group_id': []}
     label_dict = {"manipulated_sequences": 1, "original_sequences": 0} 
     if args.dataset == "all" :
         for label in os.listdir(args.input_path):
@@ -57,6 +161,8 @@ if __name__ == "__main__":
                     files = [f for f in glob.glob(data_path, recursive=True)]
                     data['image'].extend(files)
                     data['class'].extend([label_dict[label]]*len(files))
+                    meta_data = [f.split("/") for f in files]
+                    data['group_id'].extend(f'{f[-5]}/{f[-2]}' for f in meta_data)
         all_data = pd.DataFrame(data)
 
     elif args.dataset == "deepfakedetection":
@@ -67,12 +173,31 @@ if __name__ == "__main__":
                     files = [f for f in glob.glob(data_path, recursive=True)]
                     data['image'].extend(files)
                     data['class'].extend([label_dict[label]]*len(files))
-        all_data = pd.DataFrame(data)
+                    meta_data = [f.split("/") for f in files]
+                    data['group_id'].extend(f'{f[-5]}/{f[-2]}' for f in meta_data)
+    
+    df_main = pd.DataFrame(data)
+    df_main.to_csv('data/csv/all.csv')
+    # print(pd.concat([df_main.head(5), df_main.sample(5)]))
 
-    train, valid, test = data2csv(path = "./data/csv", data = all_data)
-    _, train_10 = data_split(train, test_size=0.1)
-    _, valid_10 = data_split(valid, test_size=0.1)
-    _, test_10 = data_split(test, test_size=0.1)
+    # Split data
+    if not os.path.exists('data/csv/train.csv'):
+        df_train, df_val, df_test = StratifiedGroupShuffleSplit(df_main, class_name = 'class', group_id = 'group_id')
+        df_train.to_csv('data/csv/train.csv')
+        df_val.to_csv('data/csv/val.csv')
+        df_test.to_csv('data/csv/test.csv')
+    else:
+        df_train = pd.read_csv('data/csv/train.csv')
+        df_val = pd.read_csv('data/csv/val.csv')
+        df_test = pd.read_csv('data/csv/test.csv')
+
+    # get 10% data
+    print("Get partial data")
+    time.sleep(1)
+    train_10 = get_part_of_data(df_train, size = 0.1)
+    valid_10 = get_part_of_data(df_val, size = 0.1)
+    test_10 = get_part_of_data(df_test, size = 0.1)
+
     path = "./data/csv10"
     os.makedirs(path, exist_ok=True)
     train_10.to_csv(os.path.join(path, "train.csv"), index=None)

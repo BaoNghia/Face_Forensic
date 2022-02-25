@@ -55,16 +55,6 @@ class LBGATLoss(nn.Module):
 
 
 class FocalLoss(nn.Module):
-    """ Focal Loss, as described in https://arxiv.org/abs/1708.02002.
-    It is essentially an enhancement to cross entropy loss and is
-    useful for classification tasks when there is a large class imbalance.
-    x is expected to contain raw, unnormalized scores for each class.
-    y is expected to contain class labels.
-    Shape:
-        - x: (batch_size, C) or (batch_size, C, d1, d2, ..., dK), K > 0.
-        - y: (batch_size,) or (batch_size, d1, d2, ..., dK), K > 0.
-    """
-
     def __init__(self,
                  alpha: Optional[Tensor] = None,
                  gamma: float = 2.,
@@ -125,8 +115,7 @@ class FocalLoss(nn.Module):
         ce = self.nll_loss(log_p, y)
 
         # get true class column from each row
-        all_rows = torch.arange(len(x))
-        log_pt = log_p[all_rows, y]
+        log_pt = log_p.gather(dim=-1, index=y.unsqueeze(1)).squeeze(1)
 
         # compute focal term: (1 - pt)^gamma
         pt = log_pt.exp()
