@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.efficientnet_transfer.model import Efficientnet_transfer
+from models.efficientnet_transfer.efficientnet import Efficientnet_transfer
 from models.cnn_spp.restnet_spp import RestnetSPP
 
 class MyEnsemble(nn.Module):

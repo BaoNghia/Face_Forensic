@@ -153,14 +153,6 @@ if __name__ == "__main__":
     project_name = config["session"]["project_name"]
     log_dir = os.path.join(save_path, project_name, time_str)
 
-    ## create logger
-    tb_writer = make_writer(log_dir = log_dir)
-    text_logger = log_initilize(log_dir)
-    print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
-    logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
-    logging.info(f"Project name: {project_name}")
-    logging.info(f"CONFIGS: \n {config}")
-
     ## Create model and (optinal) load pretrained
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     all_model = model_loader(config)
@@ -180,8 +172,16 @@ if __name__ == "__main__":
 
     num_parameter = sum(p.numel() for p in model_robust.parameters())
     print("Create model Successfully !!!")
-    logging.info(f"Number parameters of model: {num_parameter}")
     print(f"Number parameters of model: {num_parameter}")
+
+    ## create logger
+    tb_writer = make_writer(log_dir = log_dir)
+    text_logger = log_initilize(log_dir)
+    print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
+    logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
+    logging.info(f"Project name: {project_name}")
+    logging.info(f"CONFIGS: \n {config}")
+    logging.info(f"Number parameters of model: {num_parameter}")
 
     best_ckpt_path = main(
         cfg = config,

@@ -125,7 +125,7 @@ def main(cfg, model_teacher, log_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tense_teacher.yaml', help='YAML file')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_teacher_fl.yaml', help='YAML file')
     parser.add_argument('-ckpt', '--pretrained', default=None, help = 'checkpoint path for transfer learning')
     args = parser.parse_args()
     pretrained = args.pretrained
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     save_path = config['session']['save_path']
     time_str = str(time.strftime("%Y-%m-%d-%Hh%M", time.localtime()))
     project_name = config["session"]["project_name"]
-    log_dir = os.path.join(save_path, project_name, time_str)
+    log_dir = os.path.join(save_path, project_name, f'{time_str}-{comment}')
 
     ## create logger
     tb_writer = make_writer(log_dir = log_dir)

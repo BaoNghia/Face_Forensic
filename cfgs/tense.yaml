@@ -21,14 +21,16 @@ data : {
 }
 
 model_teacher: {
-  model.class: models.resnet_transfer.resnet.ResNet_transfer,
-  model_name: resnet50,
+  model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
+  model_name: efficientnet-b5,
   pretrained: true,
   num_classes: 2,
 }
 
 model_robust: {
-  model.class: models.wideresnetcifar.WideResNet,
+  model.class: models.resnet_transfer.resnet.ResNet_transfer,
+  model_name: resnet50,
+  pretrained: true,
   num_classes: 2,
 }
 

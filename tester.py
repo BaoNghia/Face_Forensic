@@ -6,15 +6,12 @@ import argparse
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from utils.general import yaml_loader
-
-from torchvision import transforms as T
-from data_loader import dataloader
-from data_loader import transforms
+import torch.utils.data as data
+from data_loader import transforms as mytransforms
+from utils.general import yaml_loader, model_loader, get_attr_by_name
 
 from sklearn.metrics import classification_report
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
+
 
 
 def test_result(model, test_loader, device, label_name):
@@ -35,6 +32,7 @@ def test_result(model, test_loader, device, label_name):
             list_labels.extend(targets.cpu().detach().numpy())
             list_preds.extend(preds.cpu().detach().numpy())
     return (classification_report(list_labels, list_preds, target_names=label_name, zero_division = 1))
+
 
 def test(model, device, test_loader, criterion, test_metrics):
     #validate-the-model
@@ -77,8 +75,8 @@ def test(model, device, test_loader, criterion, test_metrics):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tenes.yaml', help='YAML file')
-    parser.add_argument('-cp', '--checkpoint', default=None, help = 'checkpoint path')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_teacher_fl.yaml', help='YAML file')
+    parser.add_argument('-ckpt', '--checkpoint', default=None, help = 'checkpoint path')
     args = parser.parse_args()
     checkpoint_path = args.checkpoint
     print("Testing process beginning here....")
@@ -87,20 +85,21 @@ if __name__ == "__main__":
     cfg = yaml_loader(args.configure)
 
     # load model
-    print("Loading model...")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    checkpoint = torch.load(checkpoint_path)
-    test_model = checkpoint['model']
+    print("Loading model...")
+    all_model = model_loader(cfg)
+    test_model = all_model['model_teacher']
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
     test_model.load_state_dict(checkpoint['state_dict'])
     test_model = test_model.to(device)
+    test_model.eval()
 
     print("Inference on the testing set")
-    test_data = cfg["data"]["test_csv_name"]
-    data_path = cfg["data"]["data_path"]
-    test_df = pd.read_csv(test_data)
+    test_csv = cfg["data"]["test_csv_name"]
+    test_set = pd.read_csv(test_csv)
 
     # prepare the dataset
-    testing_set = dataloader.ClassificationDataset(test_df, data_path, transforms.val_transform)
-    test_loader = torch.utils.data.DataLoader(testing_set, batch_size=1, shuffle=False,)
-    print(test_result(test_model, test_loader, device,cfg))
-    # print(tta_labels(model,test_loader,device,cfg))
+    dataset, _, _ = get_attr_by_name(cfg['data']['data.class'])
+    test_set = dataset(test_set, transform = mytransforms.test_transform)
+    test_loader = data.DataLoader(test_set, batch_size=32, num_workers=0, shuffle=False)
+    print(test_result(test_model, test_loader, device, label_name = cfg.get("data")["label_dict"]))

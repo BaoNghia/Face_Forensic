@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 from utils.general import convert_size, to_PILImage
-from utils.attacks import generate_TRADES, generate_PGD
+# from utils.attacks import generate_TRADES, generate_PGD
 
 
 def train_epoch(
@@ -24,16 +24,15 @@ def train_epoch(
             inputs, targets = inputs.to(device), targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            adv_inputs = attacker.perturb_TRADES(inputs, targets)
-            # adv_inputs = generate_TRADES(model_robust, inputs, cfg.get("adversarial"))
+            intputs_adv = attacker.perturb_TRADES(inputs, targets)
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
-            out_adv = model_robust(adv_inputs)
-            out_natural = model_robust(inputs)
+            out_adv = model_robust(intputs_adv)
+            out_nat = model_robust(inputs)
             out_orig = model_teacher(inputs)
             ## forward model and compute loss
-            loss = criterion(out_adv, out_natural, out_orig, targets)
+            loss = criterion(out_adv, out_nat, out_orig, targets)
             loss.backward()
             optimizer.step()
             ## update training-loss

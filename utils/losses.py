@@ -6,52 +6,12 @@ from torch.autograd import Variable
 from typing import Optional, Sequence
 from torch import Tensor
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def one_hot(labels, num_classes):
     shape = labels.shape
     one_hot = torch.zeros((shape[0], num_classes) + shape[1:])
     return one_hot.scatter_(1, labels.unsqueeze(1), 1.0)
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-class LBGATLoss(nn.Module):
-    def __init__(self, weight = None, alpha=1.0, **kwargs):
-        super(LBGATLoss, self).__init__()
-        self.alpha = alpha
-        self.criterion_kl = nn.KLDivLoss(reduction='sum')
-        self.mse = nn.MSELoss()
-        # self.fl = FocalLoss(alpha = weight, gamma=2)
-        self.fl = nn.CrossEntropyLoss()
-        self.softmax = torch.nn.Softmax(dim=1)
-
-    def forward(self, out_adv, out_natural, out_orig, y):
-        features_adv, x4s_adv, outputs_adv = out_adv
-        features_natural, x4s_natural, outputs_natural = out_natural
-        features_orig, x4s_orig, outputs_orig = out_orig
-        
-        loss_mse = self.fl(outputs_orig, y) + self.mse(outputs_orig, outputs_adv)
-        loss_kl = (1.0 / y.size(0)) * \
-            self.criterion_kl(
-                F.log_softmax(outputs_adv, dim=1), 
-                F.softmax(outputs_natural, dim=1)
-            )
-        loss = loss_mse + self.alpha * loss_kl
-        return loss
-
-
-# class FocalLoss(nn.Module):
-#     def __init__(self, weight=None, gamma=2, reduction='none'):
-#         super(FocalLoss, self).__init__()
-#         self.gamma = gamma
-#         self.reduction = reduction
-#         self.weight = weight
-#         if self.weight != None:
-#             self.weight = torch.Tensor(self.weight).to(device)   # weight parameter will act as the alpha parameter to balance class weights
-
-#     def forward(self, inputs, targets):
-#         ce_loss = F.cross_entropy(inputs, targets, reduction=self.reduction, weight=self.weight)
-#         pt = torch.exp(-ce_loss)
-#         focal_loss = ((1 - pt) ** self.gamma * ce_loss).mean()
-#         return focal_loss
 
 
 class FocalLoss(nn.Module):
@@ -76,7 +36,10 @@ class FocalLoss(nn.Module):
                 'Reduction must be one of: "mean", "sum", "none".')
 
         super().__init__()
-        self.alpha = torch.tensor(alpha, dtype=torch.float, device=device)
+        if alpha:
+            self.alpha = torch.tensor(alpha, dtype=torch.float, device=device)
+        else:
+            self.alpha = None
         self.gamma = torch.tensor(gamma, dtype=torch.float, device=device)
         self.smoothing = torch.tensor(smoothing, dtype=torch.float, device=device)
         self.reduction = reduction
@@ -129,4 +92,28 @@ class FocalLoss(nn.Module):
         elif self.reduction == 'sum':
             loss = loss.sum()
 
+        return loss
+
+
+class LBGATLoss(nn.Module):
+    def __init__(self, weight = None, beta=1.0, **kwargs):
+        super(LBGATLoss, self).__init__()
+        self.beta = beta
+        self.criterion_kl = nn.KLDivLoss(reduction='sum')
+        self.mse = nn.MSELoss()
+        self.fl = FocalLoss(alpha = weight)
+        self.softmax = torch.nn.Softmax(dim=1)
+
+    
+    def forward(self, out_adv, out_natural, out_orig, y):
+        features_adv, x4s_adv, logits_adv = out_adv
+        features_natural, x4s_natural, logits_natural = out_natural
+        features_orig, x4s_orig, logits_orig = out_orig
+        batch_size = y.size(0)
+        
+        loss_fl = self.fl(out_adv, y)
+        loss_map = self.mse(features_adv, features_orig)
+        loss_kl = (1.0 / batch_size) * self.criterion_kl(F.log_softmax(logits_adv, dim=1), 
+                                                        F.softmax(logits_natural, dim=1))
+        loss = loss_fl + loss_map + self.beta * loss_kl
         return loss

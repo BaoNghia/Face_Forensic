@@ -20,7 +20,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
 		"""
 		self.data = data
 		self.imgs = data["image"]
-		self.classes = data["class"]
+		self.classes = data["label"]
 		self.training = training
 		self.transform = transform
 

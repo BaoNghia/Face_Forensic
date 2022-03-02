@@ -3,7 +3,6 @@ import math
 import logging
 import torch
 import importlib
-from torch.utils.tensorboard import SummaryWriter
 from utils import losses as custom_loss
 
 
@@ -132,6 +131,7 @@ def log_initilize(log_dir):
     return logger
 
 def make_writer(log_dir):
+    from torch.utils.tensorboard import SummaryWriter
     writer = SummaryWriter(log_dir=log_dir)
     return writer
 
