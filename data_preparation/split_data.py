@@ -201,22 +201,22 @@ if __name__ == "__main__":
         df_test = pd.read_csv(main_data_path / 'data_test.csv')
 
 
-    # ## get partial data
-    # print("\nGet partial data")
-    # time.sleep(1)
-    # _, train_10 = get_part_of_data(df_train, size = 0.1)
-    # _, valid_10 = get_part_of_data(df_val, size = 0.1)
-    # _, test_10 = get_part_of_data(df_test, size = 0.2)
+    ## get partial data
+    print("\nGet partial data")
+    time.sleep(1)
+    _, train_10 = get_part_of_data(df_train, size = 0.1)
+    _, valid_10 = get_part_of_data(df_val, size = 0.1)
+    _, test_10 = get_part_of_data(df_test, size = 0.2)
 
-    # print(train_10[class_name].value_counts().to_dict())
-    # print(valid_10[class_name].value_counts().to_dict())
-    # print(test_10[class_name].value_counts().to_dict())
+    print(train_10[class_name].value_counts().to_dict())
+    print(valid_10[class_name].value_counts().to_dict())
+    print(test_10[class_name].value_counts().to_dict())
 
     
-    # partial_path = Path('./data/csv10')
-    # partial_path.mkdir(parents=True, exist_ok=True)
-    # train_10.to_csv(partial_path / "data_train.csv", index = False)
-    # valid_10.to_csv(partial_path / "data_val.csv", index = False)
-    # test_10.to_csv(partial_path / "data_test.csv", index = False)
+    partial_path = Path('./data/csv6labels_partial')
+    partial_path.mkdir(parents=True, exist_ok=True)
+    train_10.to_csv(partial_path / "data_train.csv", index = False)
+    valid_10.to_csv(partial_path / "data_val.csv", index = False)
+    test_10.to_csv(partial_path / "data_test.csv", index = False)
 
     print("Finished!!!")

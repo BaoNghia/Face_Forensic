@@ -24,11 +24,11 @@ def train_epoch(
             inputs, targets = inputs.to(device), targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            intputs_adv = attacker.perturb_TRADES(inputs, targets)
+            inputs_adv = attacker.perturb_TRADES(inputs, targets)
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
-            out_adv = model_robust(intputs_adv)
+            out_adv = model_robust(inputs_adv)
             out_nat = model_robust(inputs)
             out_orig = model_teacher(inputs)
             ## forward model and compute loss

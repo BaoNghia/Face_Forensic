@@ -45,6 +45,6 @@ class Efficientnet_transfer(nn.Module):
         return features, x4, logits
 
 if __name__ == '__main__':
-    model = Efficientnet_transfer('efficientnet_b0', num_classes=2, pretrained=True)
+    model = Efficientnet_transfer('efficientnet_b5', num_classes=6, pretrained=True)
     features, x4, logits = model(torch.rand(5,3,256,256))
     print(features.shape, x4.shape, logits.shape)

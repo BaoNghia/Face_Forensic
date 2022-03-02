@@ -40,9 +40,14 @@ def eval_adv_test(model, device, test_loader, adverary):
             natural_err_total += err_natural
             pbar.set_postfix(nat = 1 - (err_natural/y.size(0)).cpu().detach().numpy(), \
                 robust = 1 - (err_robust/y.size(0)).cpu().detach().numpy())
+    if os.path.exists(log_file):
+        open(log_file).write("robust_err_total: " + str(robust_err_total)+ "\n")
+        open(log_file).write("natural_err_total: " + str(natural_err_total)+ "\n")
+    else:
+        with open(log_file, 'w') as f:
+            f.write("robust_err_total: " + str(robust_err_total)+ "\n")
+            f.write("natural_err_total: " + str(natural_err_total)+ "\n")
 
-    open(log_file).write("robust_err_total: " + str(robust_err_total)+ "\n")
-    open(log_file).write("natural_err_total: " + str(natural_err_total)+ "\n")
 
 
 if __name__ == "__main__":

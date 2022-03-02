@@ -131,7 +131,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
 
 if __name__ == "__main__":
-    tmp = 'logs/Face_Forensic_teacher/2022-02-23-08h32/_best.ckpt'
+    tmp = 'logs/Face_Forensic_teacher/2022-03-02-13h11-fl_6labels/_best.ckpt'
     parser = argparse.ArgumentParser(description='NA')
     parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
     parser.add_argument('-nat_ckpt', '--teacher_checkpoint', default=tmp, help = 'checkpoint path of teacher model')
