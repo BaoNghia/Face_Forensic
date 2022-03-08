@@ -18,12 +18,19 @@ data : {
   validation_csv_name : ./data/csv6labels/data_val.csv,
   test_csv_name: ./data/csv6labels_partial/data_test.csv,
   label_dict: ['original', 'Deepfakes', 'Face2Face', 'FaceSwap', 'FaceShifter', 'NeuralTextures'], # sort by class_id
-  batch_size: 25,
+  batch_size: 64,
 }
 
+# model_teacher: {
+#   model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
+#   model_name: efficientnet_b5,
+#   pretrained: true,
+#   num_classes: 6,
+# }
+
 model_teacher: {
-  model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
-  model_name: efficientnet_b5,
+  model.class: models.resnet_transfer.resnet.Resnet_transfer,
+  model_name: resnet50,
   pretrained: true,
   num_classes: 6,
 }

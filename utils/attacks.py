@@ -74,7 +74,7 @@ class Attacks(nn.Module):
         self.model.eval()
         if y is None:
             _, y = torch.max(self.model(x), 1)
-
+            
         ## generate adversarial example
         eta = torch.zeros_like(x).uniform_(-self.epsilon, self.epsilon)
         eta = clip_eta(eta, self.norm, self.epsilon)

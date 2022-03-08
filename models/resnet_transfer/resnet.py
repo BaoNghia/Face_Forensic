@@ -10,6 +10,7 @@ def load_backbone(name, pretrained = True):
         raise ValueError("name must be in {'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'}")
         sys.exit()
         
+    print(f'Loading: {name}. Using pretrained \'imagenet\': {pretrained}')
     model = getattr(models, name)(pretrained=pretrained)
     for param in model.parameters():
         param.requires_grad = True
@@ -43,4 +44,6 @@ if __name__ == '__main__':
     model = Resnet_transfer('resnet50', num_classes=2, pretrained=True)
     features, x4, logits = model(torch.rand(5,3,256,256))
     print(features.shape, x4.shape, logits.shape)
+    resnet50 = models.resnet50()
+    print(sum(p.numel() for p in resnet50.parameters()))
 

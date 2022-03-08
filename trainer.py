@@ -18,7 +18,7 @@ def train_epoch(
         train_loss = 0
         mloss = 0
         macc = 0
-        model_teacher.train()
+        model_teacher.eval()
         for batch_idx, (inputs, targets) in pbar:
             ## move-tensors-to-GPU
             inputs, targets = inputs.to(device), targets.to(device)
@@ -36,10 +36,9 @@ def train_epoch(
             loss.backward()
             optimizer.step()
             ## update training-loss
-            train_loss += loss.item() * inputs.size(0)
+            train_loss += loss.item() * len(targets)
             ## calculate training metrics
-            _,_, outputs = model_robust(inputs)
-            _, preds = torch.max(outputs.data, dim=-1)
+            _, preds = torch.max(out_adv[-1].data, dim=-1)
             correct = torch.sum(preds.data == targets.data).item()
             train_metrics.step(preds.cpu().detach().numpy(), targets.cpu().detach().numpy())
 

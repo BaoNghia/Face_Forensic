@@ -95,6 +95,69 @@ class FocalLoss(nn.Module):
         return loss
 
 
+class ImbalanceFocalLoss(nn.Module):
+    def __init__(self,
+                beta: float = 0.9999,
+                gamma: float = 2.,
+                reduction: str = 'mean',
+                ignore_index: int = -100):
+        """Constructor.
+        Args:
+            alpha (Tensor, optional): Weights for each class. Defaults to None.
+            gamma (float, optional): A constant, as described in the paper.
+                Defaults to 0.
+            reduction (str, optional): 'mean', 'sum' or 'none'.
+                Defaults to 'mean'.
+            ignore_index (int, optional): class label to ignore.
+                Defaults to -100.
+        """
+        if reduction not in ('mean', 'sum', 'none'):
+            raise ValueError(
+                'Reduction must be one of: "mean", "sum", "none".')
+
+        super().__init__()
+        self.beta =  beta
+        self.gamma = torch.tensor(gamma, dtype=torch.float, device=device)
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+
+
+    def compute_weights(self, x, y):
+        x_np =  x.cpu().detach().numpy()
+        no_of_classes = x_np.shape[-1]
+        values, samples_per_cls = np.unique(x_np, return_counts=True)
+        effective_num = 1.0 - np.power(self.beta, samples_per_cls)
+        weights = (1.0 - self.beta) / np.array(effective_num)
+        weights = weights / np.sum(weights) * no_of_classes
+        weights = torch.tensor(weights).float().to(device)
+
+        labels_one_hot = F.one_hot(y, no_of_classes).float()
+        weights = weights.unsqueeze(0)
+        weights = weights.repeat(labels_one_hot.shape[0],1) * labels_one_hot
+        weights = weights.sum(1)
+        weights = weights.unsqueeze(1)
+        weights = weights.repeat(1, no_of_classes)
+
+        return weights, labels_one_hot
+
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
+        weights, labels_one_hot = self.compute_weights(x, y)
+        BCLoss = F.binary_cross_entropy_with_logits(input = x, target = labels_one_hot, reduction = "none")
+ 
+        modulator = torch.exp(-self.gamma * labels_one_hot * x \
+            - self.gamma * torch.log(1 + torch.exp(-1.0 * x)))
+
+        loss = modulator * BCLoss
+        focal_loss = weights * loss
+
+        if self.reduction == 'mean':
+            loss = focal_loss.mean()
+        elif self.reduction == 'sum':
+            loss = focal_loss.sum()
+
+        return loss
+
+
 class LBGATLoss(nn.Module):
     def __init__(self, weight = None, beta=1.0, **kwargs):
         super(LBGATLoss, self).__init__()

@@ -1,12 +1,12 @@
 session: {
-  _comment_: fl_6labels,
+  _comment_: exp1,
   save_path: ./logs,
   project_name : Face_Forensic_robust,
 }
 
 # Support sklearn metrics or custom metrics
 train: {
-  num_epochs: 40,
+  num_epochs: 100,
   metrics: ["accuracy_score", "f1_score"],
 }
 
@@ -14,16 +14,16 @@ train: {
 data : {
   data.class: data_loader.Classify.ClassificationDataset,
   validation_ratio: 0,
-  data_csv_name: ./data/csv6labels/data_train.csv,
-  validation_csv_name : ./data/csv6labels/data_val.csv,
+  data_csv_name: ./data/csv6labels_partial/data_train.csv,
+  validation_csv_name : ./data/csv6labels_partial/data_val.csv,
   test_csv_name: ./data/csv6labels_partial/data_test.csv,
   label_dict: ['original', 'Deepfakes', 'Face2Face', 'FaceSwap', 'FaceShifter', 'NeuralTextures'], # sort by class_id
-  batch_size: 25,
+  batch_size: 20,
 }
 
 model_teacher: {
   model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
-  model_name: efficientnet_b3,
+  model_name: efficientnet_b5,
   pretrained: true,
   num_classes: 6,
 }
@@ -37,7 +37,7 @@ model_robust: {
 
 loss: {
   name: LBGATLoss,
-  weight: ,
+  weight: null,
   beta: 1,
 }
 

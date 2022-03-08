@@ -73,7 +73,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
     for epoch in range(num_epochs):
         t1 = time.time()
-        adjust_learning_rate(optimizer, epoch, init_lr)
+        # adjust_learning_rate(optimizer, epoch, init_lr)
         print(('\n' + '%13s' * 4) % ('Epoch', 'gpu_mem', 'mean_loss', 'mean_acc'))
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
                                                                 model_robust, model_teacher,
@@ -86,7 +86,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
                                                                 valid_loader, valid_metrics, criterion,
                                                                 train_loss, train_acc, attacker, cfg
         )
-        # scheduler.step(valid_loss)
+        scheduler.step(valid_loss)
 
         print("Train result: ", train_result)
         print("Valid result: ", valid_result)
@@ -131,7 +131,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
 
 if __name__ == "__main__":
-    tmp = 'logs/Face_Forensic_teacher/2022-03-02-13h11-fl_6labels/_best.ckpt'
+    tmp = 'logs/Face_Forensic_teacher/2022-03-02-16h33-fl_6labels/_best.ckpt'
     parser = argparse.ArgumentParser(description='NA')
     parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
     parser.add_argument('-nat_ckpt', '--teacher_checkpoint', default=tmp, help = 'checkpoint path of teacher model')
@@ -173,6 +173,7 @@ if __name__ == "__main__":
     num_parameter = sum(p.numel() for p in model_robust.parameters())
     print("Create model Successfully !!!")
     print(f"Number parameters of model: {num_parameter}")
+    print(f"Number parameters of model: {sum(p.numel() for p in model_teacher.parameters())}")
 
     ## create logger
     tb_writer = make_writer(log_dir = log_dir)
