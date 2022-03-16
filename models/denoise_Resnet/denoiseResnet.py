@@ -1,14 +1,15 @@
+import os, sys
+SCRIPT_DIR = os.path.dirname('os.path.abspath(__file__)')
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 import torch
 from torch.nn import functional as F
-from .non_local_embedded_gaussian import NONLocalBlock2D
+from models.denoise_Resnet.non_local import NLBlockND
 
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-           'resnet152']
-
-
+__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101','resnet152']
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
     'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
@@ -108,10 +109,10 @@ class ResNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer2(block, 64, layers[0], stride=1)
-        self.layer2 = self._make_layer2(block, 128, layers[1], stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0], stride=1)
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer2(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer2(block, 512, layers[3], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -131,7 +132,6 @@ class ResNet(nn.Module):
                     nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
-
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -162,8 +162,8 @@ class ResNet(nn.Module):
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes))
-        layers.append(NONLocalBlock2D(in_channels=planes*4, sub_sample=False))
-        # layers.append(block(self.inplanes, planes))
+        layers.append(NLBlockND(in_channels=planes*4, dimension = 2, bn_layer=True))
+        layers.append(block(self.inplanes, planes))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -237,3 +237,40 @@ def resnet152(pretrained=False, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
     return model
+
+
+def load_denoiseResnet(name, pretrained = False):
+    if name.startswith('resnet'):
+        model = globals()[name](pretrained)
+    for param in model.parameters():
+        param.requires_grad = True
+    return model
+
+class Denoise_Resnet(nn.Module):
+    def __init__(self,  model_name, num_classes = 1000, pretrained = False, **kwargs):
+        super(Denoise_Resnet, self).__init__()
+        self.model = load_denoiseResnet(model_name, pretrained)
+        self.backbone = nn.Sequential(*list(self.model.children())[:-2])
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fcs = nn.Sequential(
+            nn.Linear(self.model.fc.in_features, 512, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(512, 256, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(256, num_classes, bias=True),
+        )
+
+    def forward(self, x):
+        features = self.backbone(x)
+        x4 = self.avgpool(features)
+        x4 = torch.flatten(x4, 1)
+        logits = self.fcs(x4)
+        return features, x4, logits
+
+if __name__ == '__main__':
+    x = torch.rand(5,3,256,256)
+    model = Denoise_Resnet('resnet50', num_classes=2, pretrained=False)
+    features, x4, logits = model(x)
+    print(features.shape, x4.shape, logits.shape)

@@ -151,8 +151,8 @@ def resnet1202(in_channel, num_features = 64, scales = [1], num_classes = 3):
 
 def load_resetnetSPP(name, num_class = 2):
     if name.startswith('resnet'):
-            print(name)
-            model = globals()[name]()
+        print(name)
+        model = globals()[name]()
     # model = models.mnasnet1_0(pretrained=True)
     # print(model)
     return model
@@ -164,3 +164,6 @@ class RestnetSPP(nn.Module):
 
     def forward(self, data):
         return self.model(data)
+
+if __name__ == '__main__':
+    model = load_resetnetSPP('resnet44')

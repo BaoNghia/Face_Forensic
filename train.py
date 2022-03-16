@@ -131,7 +131,8 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
 
 if __name__ == "__main__":
-    tmp = 'logs/Face_Forensic_teacher/2022-03-02-16h33-fl_6labels/_best.ckpt'
+    tmp = 'logs/Face_Forensic_teacher/2022-03-07-03h04-fl_6labels/_best.ckpt' # resnet50
+    tmp = 'logs/Face_Forensic_teacher/2022-03-02-16h33-fl_6labels/_best.ckpt' # efficientnet_b5
     parser = argparse.ArgumentParser(description='NA')
     parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
     parser.add_argument('-nat_ckpt', '--teacher_checkpoint', default=tmp, help = 'checkpoint path of teacher model')
@@ -153,6 +154,14 @@ if __name__ == "__main__":
     project_name = config["session"]["project_name"]
     log_dir = os.path.join(save_path, project_name, time_str)
 
+    ## create logger
+    tb_writer = make_writer(log_dir = log_dir)
+    text_logger = log_initilize(log_dir)
+    print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
+    logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
+    logging.info(f"Project name: {project_name}")
+    logging.info(f"CONFIGS: \n {config}")
+
     ## Create model and (optinal) load pretrained
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     all_model = model_loader(config)
@@ -160,7 +169,6 @@ if __name__ == "__main__":
     # model_teacher = teacher_checkpoint['model']
     model_teacher = all_model['model_teacher'] 
     model_teacher.load_state_dict(teacher_checkpoint['state_dict'])
-    # model_teacher = nn.DataParallel(model_teacher).to(device)
     model_robust = all_model['model_robust']
     if pretrained is not None:
         print("...Load Pretrain from {}".format(pretrained))
@@ -171,18 +179,10 @@ if __name__ == "__main__":
         print("Train from scratch")
 
     num_parameter = sum(p.numel() for p in model_robust.parameters())
+    logging.info(f"Number parameters of model: {num_parameter}")
     print("Create model Successfully !!!")
     print(f"Number parameters of model: {num_parameter}")
     print(f"Number parameters of model: {sum(p.numel() for p in model_teacher.parameters())}")
-
-    ## create logger
-    tb_writer = make_writer(log_dir = log_dir)
-    text_logger = log_initilize(log_dir)
-    print(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
-    logging.info(f"Start Tensorboard with tensorboard --logdir {log_dir}, view at http://localhost:6006/")
-    logging.info(f"Project name: {project_name}")
-    logging.info(f"CONFIGS: \n {config}")
-    logging.info(f"Number parameters of model: {num_parameter}")
 
     best_ckpt_path = main(
         cfg = config,
