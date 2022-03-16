@@ -6,7 +6,6 @@ import importlib
 from utils import losses as custom_loss
 
 
-
 def get_attr_by_name(func_str):
     """
     Load function by full name
@@ -39,16 +38,17 @@ def get_optimizer(config):
     del cfg['name']
     return optimizer, cfg
 
+
 def adjust_learning_rate(optimizer, epoch, init_lr):
     """decrease the learning rate"""
     lr = init_lr
     if epoch==0:
        lr=0.02
-    if epoch >= 75:
+    if epoch >= 55:
         lr = init_lr * 0.1
-    if epoch >= 91:
+    if epoch >= 75:
         lr = init_lr * 0.01
-    if epoch >= 101:
+    if epoch >= 90:
         lr = init_lr * 0.001
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr

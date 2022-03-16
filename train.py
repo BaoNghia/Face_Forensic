@@ -73,7 +73,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
     for epoch in range(num_epochs):
         t1 = time.time()
-        # adjust_learning_rate(optimizer, epoch, init_lr)
+        adjust_learning_rate(optimizer, epoch, init_lr)
         print(('\n' + '%13s' * 4) % ('Epoch', 'gpu_mem', 'mean_loss', 'mean_acc'))
         train_loss, train_acc, train_result = trainer.train_epoch(epoch, num_epochs, device, 
                                                                 model_robust, model_teacher,
@@ -86,7 +86,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
                                                                 valid_loader, valid_metrics, criterion,
                                                                 train_loss, train_acc, attacker, cfg
         )
-        scheduler.step(valid_loss)
+        # scheduler.step(valid_loss)
 
         print("Train result: ", train_result)
         print("Valid result: ", valid_result)

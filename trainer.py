@@ -212,6 +212,3 @@ def valid_teacher_epoch(
         valid_loss, valid_acc,
         valid_metrics.last_step_metrics(),
     )
-
-
-    

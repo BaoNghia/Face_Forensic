@@ -164,7 +164,8 @@ class LBGATLoss(nn.Module):
         self.beta = beta
         self.criterion_kl = nn.KLDivLoss(reduction='sum')
         self.mse = nn.MSELoss()
-        self.fl = FocalLoss(alpha = weight)
+        # self.fl = FocalLoss(alpha = weight)
+        self.ce = nn.CrossEntropyLoss()
         # self.softmax = torch.nn.Softmax(dim=1)
 
     
@@ -174,9 +175,10 @@ class LBGATLoss(nn.Module):
         features_orig, x4s_orig, logits_orig = out_orig
         batch_size = y.size(0)
         
-        loss_fl = self.fl(logits_adv, y)
+        # loss_fl = self.fl(logits_natural, y)
+        loss_ce = self.ce(logits_natural, y)
         loss_map = self.mse(features_adv, features_orig)
         loss_kl = (1.0 / batch_size) * self.criterion_kl(F.log_softmax(logits_adv, dim=1), 
                                                         F.softmax(logits_natural, dim=1))
-        loss = loss_fl + loss_map + self.beta * loss_kl
+        loss = loss_ce + loss_map + self.beta * loss_kl
         return loss
