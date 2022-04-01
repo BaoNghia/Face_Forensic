@@ -16,3 +16,6 @@ data/*
 #checkpoint
 *.pth
 *.pt
+train_cifar.py
+train_teacher_cifar.py
+

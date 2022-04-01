@@ -53,7 +53,7 @@ def main(cfg, model_teacher, log_dir):
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
     train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
-    # train_loader, valid_loader, test_loader = cifar10_dataloader(cfg)
+
     print("Dataset and Dataloaders created")
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))

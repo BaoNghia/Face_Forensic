@@ -16,4 +16,5 @@ torch-summary
 pretrainedmodels
 efficientnet_pytorch
 facenet-pytorch
+timm @ git+https://github.com/rwightman/pytorch-image-models.git@c9f208f7f8d5917f9a900ef2f96d9aa2ffb9264e
 # autoattack @ git+https://github.com/fra31/auto-attack@6482e4d6fbeeb51ae9585c41b16d50d14576aadc

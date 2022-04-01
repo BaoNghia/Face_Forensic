@@ -4,40 +4,56 @@ session: {
   project_name : CIFAR10,
 }
 
+# Support sklearn metrics or custom metrics
+train: {
+  num_epochs: 100,
+  metrics: ["accuracy_score", "f1_score"],
+}
+
+# if you want to auto split please set
 data : {
   data.class: data_loader.Classify.ClassificationDataset,
-  data_csv_name: ./data/csv/train.csv,
   validation_ratio: 0,
-  validation_csv_name : ./data/csv/valid.csv,
-  test_csv_name: ./data/csv/test.csv,
-  label_dict: ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'],
-  batch_size: 140,
+  data_csv_name: ./data/csv6labels_partial/data_train.csv,
+  validation_csv_name : ./data/csv6labels_partial/data_val.csv,
+  test_csv_name: ./data/csv6labels_partial/data_test.csv,
+  label_dict: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'], # sort by class_id
+  batch_size: 128,
 }
 
 model_teacher: {
-  model.class: models.resnet_transfer.resnet.ResNet_transfer,
-  model_name: resnet18,
-  pretrained: true,
+  model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
+  model_name: efficientnet_b5,
+  pretrained: false,
   num_classes: 10,
 }
 
 model_robust: {
-  model.class: models.wideresnetcifar.WideResNet,
+  model.class: models.resnet_transfer.resnet.Resnet_transfer,
+  model_name: resnet50,
+  pretrained: true,
   num_classes: 10,
 }
 
 loss: {
   name: LBGATLoss,
-  weight: [4,1],
+  weight: null,
   beta: 1,
+}
+
+adversarial: {
+  perturb_steps: 10,
+  step_size: 0.007,
+  epsilon: 0.031,
+  norm: np.inf,
 }
 
 # configure arguments of torch.optim.Optimizer
 # You can add other arguments for the Optimizer
-# Do not modify this key (eg. "name": SGD)
+# (ex. "name": SGD)
 optimizer: {
   name: SGD,
-  lr: 0.1,
+  lr: 1e-2,
   momentum: 0.9,
   weight_decay: 2e-4,
 }
@@ -47,22 +63,8 @@ optimizer: {
 # Do not modify this key (eg. "name": CosineAnnealingLR)
 scheduler: {
   name: ReduceLROnPlateau,
-  min_lr: 1e-4,
+  min_lr: 1e-6,
   mode: min,
   patience: 10,
   factor: 0.1,
-}
-
-adversarial: {
-  perturb_steps: 10,
-  step_size: 0.007,
-  epsilon: 0.031,
-  norm: np.inf,
-  # norm: 2,
-}
-
-# Support sklearn metrics or custom metrics
-train: {
-  num_epochs: 100,
-  metrics: ["accuracy_score", "f1_score"],
 }

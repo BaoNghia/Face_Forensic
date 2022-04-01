@@ -59,7 +59,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
     train_data, valid_data, test_data = get_dataset(cfg)
     batch_size = int(cfg["data"]["batch_size"])
     train_loader, valid_loader, test_loader = get_dataloader(train_data, valid_data, test_data, batch_size)
-    # train_loader, valid_loader, test_loader = cifar10_dataloader(cfg)
+
     print("Dataset and Dataloaders created")
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
     print("Validation shape: {} samples".format(len(valid_loader.dataset)))
@@ -131,7 +131,7 @@ def main(cfg, model_robust, model_teacher, log_dir):
 
 
 if __name__ == "__main__":
-    tmp = 'logs/Face_Forensic_teacher/2022-03-07-03h04-fl_6labels/_best.ckpt' # resnet50
+    # tmp = 'logs/Face_Forensic_teacher/2022-03-07-03h04-fl_6labels/_best.ckpt' # resnet50
     tmp = 'logs/Face_Forensic_teacher/2022-03-02-16h33-fl_6labels/_best.ckpt' # efficientnet_b5
     parser = argparse.ArgumentParser(description='NA')
     parser.add_argument('-cfg', '--configure', default='cfgs/tense.yaml', help='YAML file')
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     save_path = config['session']['save_path']
     time_str = str(time.strftime("%Y-%m-%d-%Hh%M", time.localtime()))
     project_name = config["session"]["project_name"]
-    log_dir = os.path.join(save_path, project_name, time_str)
+    log_dir = os.path.join(save_path, project_name, f'{time_str}-{comment}')
 
     ## create logger
     tb_writer = make_writer(log_dir = log_dir)

@@ -22,24 +22,18 @@ data : {
 }
 
 model_teacher: {
-  model.class: models.efficientnet_transfer.efficientnet.Efficientnet_transfer,
-  model_name: efficientnet_b5,
+  model.class: models.efficientnet_transfer.efficientnetv2.EfficientnetV2_transfer,
+  model_name: tf_efficientnetv2_m,
   pretrained: false,
   num_classes: 6,
 }
 
-# model_robust: {
-#   model.class: models.denoise_Resnet.denoiseResnet.Denoise_Resnet,
-#   model_name: resnet50,
-#   num_classes: 6,
-# }
-
 model_robust: {
-  model.class: models.resnet_transfer.resnet.Resnet_transfer,
-  model_name: resnet101,
-  pretrained: true,
+  model.class: models.denoise_Resnet.denoiseResnet.Denoise_Resnet,
+  model_name: resnet50,
   num_classes: 6,
 }
+
 
 loss: {
   name: LBGATLoss,
@@ -49,9 +43,10 @@ loss: {
 
 adversarial: {
   perturb_steps: 10,
-  step_size: 0.007,
-  epsilon: 0.031,
-  norm: np.inf,
+  step_size: 0.005,
+  epsilon: 0.021,
+  # norm: np.inf,
+  norm: 2,
 }
 
 # configure arguments of torch.optim.Optimizer
