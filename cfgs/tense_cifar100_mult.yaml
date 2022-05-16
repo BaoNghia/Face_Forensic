@@ -1,0 +1,82 @@
+session: {
+  _comment_: exp1,
+  save_path: ./logs,
+  project_name : CIFAR100,
+}
+
+data : {
+  data.class: data_loader.Classify.ClassificationDataset,
+  data_csv_name: ./data/csv/train.csv,
+  validation_ratio: 0,
+  validation_csv_name : ./data/csv/valid.csv,
+  test_csv_name: ./data/csv/test.csv,
+  label_dict: ["real", "fake"], # sort by class_id
+  batch_size: 140,
+}
+
+model_teacher: {
+  model.class: models.resnetcifar.ResNet18_cifar,
+  num_classes: 100,
+}
+
+model_robust: {
+  model.class: models.wideresnetcifar.WideResNet,
+  num_classes: 100,
+}
+
+# model_teacher: {
+#   model.class: models.resnet_transfer.resnet.ResNet_transfer,
+#   model_name: resnet18,
+#   pretrained: true,
+#   num_classes: 100,
+# }
+
+# model_robust: {
+#   model.class: models.wideresnet_tranfer.wresnet.WideResNet_transfer,
+#   model_name: wide_resnet50_2,
+#   pretrained: true,
+#   num_classes: 100,
+# }
+
+loss: {
+  name: LBGATLoss,
+  weight: [4,1],
+  beta: 1,
+}
+
+# configure arguments of torch.optim.Optimizer
+# You can add other arguments for the Optimizer
+# Do not modify this key (eg. "name": SGD)
+optimizer: {
+  name: SGD,
+  lr: 1e-2,
+  momentum: 0.9,
+  weight_decay: 2e-4,
+}
+
+# configure arguments of torch.optim.lr_scheduler 
+# feel free to add other arguments for the sheduler
+# Do not modify this key (eg. "name": CosineAnnealingLR)
+scheduler: {
+  name: ReduceLROnPlateau,
+  min_lr: 1e-4,
+  mode: min,
+  patience: 10,
+  factor: 0.1,
+}
+
+adversarial: {
+  perturb_steps: 10,
+  step_size: 0.007,
+  epsilon: 0.031,
+  norm: np.inf,
+}
+
+# Support sklearn metrics or custom metrics
+train: {
+  num_epochs: 100,
+  metrics: ["accuracy_score", "f1_score"],
+  # EarlyStopping
+  patience: 5,
+  mode: min,
+}

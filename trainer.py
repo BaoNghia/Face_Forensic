@@ -3,8 +3,64 @@ import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 from utils.general import convert_size, to_PILImage
-# from utils.attacks import generate_TRADES, generate_PGD
 
+from PIL import Image
+import torchvision.transforms as T
+transform = T.ToPILImage()
+
+def train_epoch_multi(
+        epoch, num_epochs, device,
+        model_robust, model_teacher,
+        train_loader, train_metrics,
+        criterion, optimizer, attacker,
+        cfg,
+    ):
+
+    ## training-the-model
+    with tqdm(enumerate(train_loader), total = len(train_loader)) as pbar:
+        train_loss = 0
+        mloss = 0
+        correct = 0
+        model_teacher.train()
+        for batch_idx, (inputs, targets) in pbar:
+            ## move-tensors-to-GPU
+            inputs, targets = inputs.to(device), targets.to(device)
+            ## generate adversarial_sample
+            optimizer.zero_grad()
+            adv_inputs = attacker.perturb_PGD(inputs, targets)
+
+            ## zero the gradient beforehand
+            model_robust.train()
+            optimizer.zero_grad()
+            out_orig = model_teacher(inputs)
+            out_adv = model_robust(adv_inputs)
+            out_natural = model_robust(inputs)
+            
+            ## forward model and compute loss
+            loss = criterion(out_adv, out_natural, out_orig, targets)
+            loss.backward()
+            optimizer.step()
+
+            ## update training-loss
+            train_loss += loss.item() * inputs.size(0)
+
+            ## calculate training metrics
+            _, preds = torch.max(out_adv[-1].data, dim=-1)
+            correct = torch.sum(preds.data == targets.data).item()
+            train_metrics.step(preds.cpu().detach().numpy(), targets.cpu().detach().numpy())
+
+            ## pbar
+            mem = convert_size(torch.cuda.memory_reserved()) if torch.cuda.is_available() else "0 GB"  # (GB)
+            macc = (macc * batch_idx + correct/inputs.size(0))/(batch_idx + 1)
+            mloss = (mloss * batch_idx + loss.item())/(batch_idx + 1)
+            s = ('%13s' * 2 + '%13.4g' * 2) % ('%g/%g' % (epoch, num_epochs - 1), mem, mloss, macc)
+            pbar.set_description(s)
+            pbar.set_postfix(lr = optimizer.param_groups[0]['lr'])
+
+        train_loss = train_loss/len(train_loader.dataset)
+        train_acc = correct/len(train_loader.dataset)
+
+    return train_loss, train_acc, train_metrics.epoch()
 
 def train_epoch(
         epoch, num_epochs, device,
@@ -134,7 +190,6 @@ def valid_adv_epoch(
         valid_metrics.last_step_metrics(),
     )
 
-
 def train_teacher_epoch(
         epoch, num_epochs, device, model,
         train_loader, train_metrics,
@@ -174,7 +229,6 @@ def train_teacher_epoch(
         train_loss = train_loss/len(train_loader.dataset)
         train_acc = macc
     return train_loss, train_acc, train_metrics.epoch()
-
 
 def valid_teacher_epoch(
         device, model_teacher,

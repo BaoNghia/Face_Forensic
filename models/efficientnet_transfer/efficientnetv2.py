@@ -7,9 +7,9 @@ from torchsummary import summary
 
 
 def load_backbone(name, pretrained = True):
-    model_names = timm.list_models(pretrained=True)
-    model_names = [name for name in model_names if 'efficientnetv2' in name]
-    assert (name in model_names), f"name must be in {model_names}"
+    # model_names = timm.list_models(pretrained=True)
+    # model_names = [name for name in model_names if 'efficientnetv2' in name]
+    # assert (name in model_names), f"name must be in {model_names}"
 
     print(f'Loading: {name}. Using pretrained \'imagenet\': {pretrained}')
     model = timm.create_model(name, pretrained=pretrained)
@@ -45,8 +45,9 @@ class EfficientnetV2_transfer(nn.Module):
 
 if __name__ == '__main__':
     model_names = timm.list_models(pretrained=True)
+    pprint(model_names)
     # model = timm.create_model('tf_efficientnetv2_m', pretrained=True)
-    model = EfficientnetV2_transfer('tf_efficientnetv2_m', num_classes=6, pretrained=True)
+    model = EfficientnetV2_transfer('efficientnetv2_rw_m', num_classes=6, pretrained=True)
 
     features, x4, logits = model(torch.rand(5,3,256,256))
     print(features.shape, x4.shape, logits.shape)

@@ -1,7 +1,10 @@
+import os, sys
+SCRIPT_DIR = os.path.dirname('os.path.abspath(__file__)')
 import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from models.non_local import NLBlockND
 
 
 class BasicBlock(nn.Module):
@@ -33,14 +36,26 @@ class BasicBlock(nn.Module):
 
 
 class NetworkBlock(nn.Module):
-    def __init__(self, nb_layers, in_planes, out_planes, block, stride, dropRate=0.0):
+    def __init__(self, nb_layers, in_planes, out_planes, block, stride, dropRate=0.0, use_denoise = False):
         super(NetworkBlock, self).__init__()
-        self.layer = self._make_layer(block, in_planes, out_planes, nb_layers, stride, dropRate)
+        if not use_denoise:
+            self.layer = self._make_layer(block, in_planes, out_planes, nb_layers, stride, dropRate)
+        else:
+            self.layer = self._make_layer2(block, in_planes, out_planes, nb_layers, stride, dropRate)
 
     def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
         layers = []
         for i in range(int(nb_layers)):
             layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
+        return nn.Sequential(*layers)
+    
+    def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
+        layers = []
+        for i in range(int(nb_layers)):
+            layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
+            
+        layers.append(NLBlockND(in_channels=planes*4, dimension = 2, bn_layer=True))
+        layers.append(block(self.inplanes, planes))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -50,13 +65,12 @@ class NetworkBlock(nn.Module):
 class WideResNet(nn.Module):
     def __init__(self, depth=34, num_classes=10, widen_factor=10, dropRate=0.0, **kwargs):
         super(WideResNet, self).__init__()
-        nChannels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
+        nChannels = [16, 16 * widen_factor, 32 * widen_factor, 512]
         assert ((depth - 4) % 6 == 0)
         n = (depth - 4) / 6
         block = BasicBlock
         # 1st conv before any network block
-        self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1,
-                               padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1, padding=1, bias=False)
         # 1st block
         self.block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
         # 1st sub-block
