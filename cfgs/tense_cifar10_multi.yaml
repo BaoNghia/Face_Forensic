@@ -19,16 +19,17 @@ data : {
   test_csv_name: ./data/csv6labels_partial/data_test.csv,
   label_dict: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'], # sort by class_id
   batch_size: 128,
+  num_class: 10,
 }
 
 model_teacher: {
   model.class: models.resnetcifar.ResNet18_cifar,
-  num_classes: 100,
+  num_classes: 10,
 }
 
 model_robust: {
   model.class: models.wideresnetcifar.WideResNet,
-  num_classes: 100,
+  num_classes: 10,
 }
 
 loss: {
@@ -49,7 +50,7 @@ adversarial: {
 # (ex. "name": SGD)
 optimizer: {
   name: SGD,
-  lr: 1e-2,
+  lr: 1e-1,
   momentum: 0.9,
   weight_decay: 2e-4,
 }

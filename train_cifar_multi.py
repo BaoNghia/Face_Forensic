@@ -12,12 +12,13 @@ from utils.general import (
     make_writer, log_initilize, yaml_loader,
     model_loader, get_optimizer, get_loss_fn,
     adjust_learning_rate, get_lr_scheduler,
-    save_best_checkpoint, save_last_checkpoint
+    save_best_checkpoint, save_last_checkpoint,
+    i_class_idx, 
 )
 
 import tester, trainer
 from data_loader.dataloader import get_dataset, get_dataloader
-from data_loader.cifar_dataloader import cifar10_dataloader, cifar100_dataloader
+from data_loader.cifar_dataloader import cifar10_dataset, cifar100_dataset
 
 # from torchsampler import ImbalancedDatasetSampler
 def main(cfg, model_robust, model_teacher, log_dir):            
@@ -60,7 +61,12 @@ def main(cfg, model_robust, model_teacher, log_dir):
     attacker = Attacks(model = model_robust, config = cfg.get("adversarial"))
 
     # Create dataset
-    train_loader, valid_loader, test_loader = cifar10_dataloader(cfg)
+    batch_size = cfg.get("data").get("batch_size")
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+    trainset, testset = cifar10_dataset(cfg)
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, **kwargs)
+    valid_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
     
     print("Dataset and Dataloaders created")
     print("\nTraing shape: {} samples".format(len(train_loader.dataset)))
@@ -72,23 +78,24 @@ def main(cfg, model_robust, model_teacher, log_dir):
     num_epochs = int(cfg["train"]["num_epochs"])
     t0 = time.time()
     best_valid_lost = np.inf
+    classes_idx = i_class_idx(trainset.targets, cfg.get("data").get("num_class"))
 
     for epoch in range(num_epochs):
         t1 = time.time()
         adjust_learning_rate(optimizer, epoch, init_lr)
         print(('\n' + '%13s' * 4) % ('Epoch', 'gpu_mem', 'mean_loss', 'mean_acc'))
+        classes_idx.get_idx()
         train_loss, train_acc, train_result = trainer.train_epoch_multi(epoch, num_epochs, device, 
                                                                 model_robust, model_teacher,
                                                                 train_loader, train_metrics,
                                                                 criterion, optimizer, attacker,
-                                                                cfg,
+                                                                cfg, trainset, classes_idx
         )
 
         valid_loss, valid_acc, valid_result = trainer.valid_epoch(device, model_robust, model_teacher,
                                                                 valid_loader, valid_metrics, criterion,
                                                                 train_loss, train_acc, attacker, cfg
         )
-        # scheduler.step(valid_loss)
 
         print("Train result: ", train_result)
         print("Valid result: ", valid_result)

@@ -7,6 +7,7 @@ import torch.utils.model_zoo as model_zoo
 import torch
 from torch.nn import functional as F
 from models.denoise_Resnet.non_local import NLBlockND
+from torchsummary import summary
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101','resnet152']
@@ -104,8 +105,7 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False):
         super(ResNet, self).__init__()
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -271,6 +271,7 @@ class Denoise_Resnet(nn.Module):
 
 if __name__ == '__main__':
     x = torch.rand(5,3,256,256)
-    model = Denoise_Resnet('resnet50', num_classes=2, pretrained=False)
-    features, x4, logits = model(x)
-    print(features.shape, x4.shape, logits.shape)
+    model = load_denoiseResnet('resnet50')
+    # features, x4, logits = model(x)
+    # print(features.shape, x4.shape, logits.shape)
+    print((summary(model, (3, 32, 32), depth = 4, col_names=["kernel_size","input_size",  "output_size", "mult_adds"])))

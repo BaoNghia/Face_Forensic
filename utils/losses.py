@@ -166,18 +166,20 @@ class LBGATLoss(nn.Module):
         self.mse = nn.MSELoss()
         self.fl = FocalLoss(alpha = weight)
         self.ce = nn.CrossEntropyLoss()
+        self.triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
 
     
-    def forward(self, out_adv, out_natural, out_orig, y):
+    def forward(self, out_adv, out_natural, out_neg, out_orig, y):
         features_adv, x4s_adv, logits_adv = out_adv
         features_natural, x4s_natural, logits_natural = out_natural
+        features_neg, x4s_neq, logits_neq = out_neg
         features_orig, x4s_orig, logits_orig = out_orig
         batch_size = y.size(0)
         
-        # loss_ce = self.ce(logits_natural, y)
-        loss_ce = self.fl(logits_adv, y)
-        loss_map = F.l1_loss(features_adv, features_orig)
-        loss_kl = (1.0 / batch_size) * self.criterion_kl(F.log_softmax(logits_adv, dim=1), 
-                                                        F.softmax(logits_natural, dim=1))
-        loss = loss_ce + loss_map + self.beta * loss_kl
+        loss_ce = self.ce(logits_orig, y) + self.mse(logits_orig, logits_adv)
+        loss_triplet = self.triplet_loss(x4s_natural, x4s_adv, x4s_neq)
+        loss_kl = (1.0 / batch_size) * \
+            self.criterion_kl(F.log_softmax(logits_adv, dim=1), 
+                            F.softmax(logits_natural, dim=1))
+        loss = loss_ce + loss_triplet + self.beta * loss_kl
         return loss

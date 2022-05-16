@@ -3,7 +3,56 @@ import math
 import logging
 import torch
 import importlib
+import numpy as np
+import random
+from torch.autograd import Variable
 from utils import losses as custom_loss
+
+class i_class_idx(object):
+    def __init__(self, targets, num_class):
+        self.targets = targets
+        self.num_class = num_class
+
+    def get_idx(self):
+        self.i_idx = []
+        for j in range(self.num_class):
+            idx = np.where(np.array(self.targets) == j)[0]
+            random.shuffle(idx)
+            self.i_idx.append(idx)
+
+    def get_batch(self, batch_targets, delete = False):
+        x1_pos_idx = np.zeros(len(batch_targets), dtype = np.int)
+        for j in range(len(batch_targets)):
+            target = batch_targets[j].item()
+            to_batch = np.random.choice(self.i_idx[target], 1, replace = False)
+            x1_pos_idx[j] = to_batch
+            if delete:
+                self.i_idx[target] = np.setdiff1d(self.i_idx[target], to_batch, assume_unique = True)
+        return x1_pos_idx
+
+def to_variable(dataset, idx_list):
+    for i, idx in enumerate(idx_list):
+        if i == 0:
+            input_batch = dataset[idx][0]
+            input_batch.unsqueeze_(0)
+            target_batch = torch.tensor(dataset[idx][1])
+            target_batch.unsqueeze_(0)
+        else:
+            one_instance = dataset[idx][0]
+            one_instance.unsqueeze_(0)
+            input_batch = torch.cat([input_batch, one_instance], 0)
+            one_target = torch.tensor(dataset[idx][1])
+            one_target.unsqueeze_(0)
+            target_batch = torch.cat([target_batch, one_target], 0)
+    input_batch = Variable(input_batch)
+    target_batch = Variable(target_batch)
+    return input_batch, target_batch
+
+def most_confussion(logits, targets):
+    a = logits.detach().clone()
+    a[np.arange(targets.shape[0]),targets] = -1e4
+    _, labels = a.max(1)
+    return labels
 
 
 def get_attr_by_name(func_str):

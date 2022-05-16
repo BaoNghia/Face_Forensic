@@ -15,7 +15,6 @@ class NLBlockND(nn.Module):
             bn_layer: whether to add batch norm
         """
         super(NLBlockND, self).__init__()
-
         assert dimension in [1, 2, 3]
         
         if mode not in ['gaussian', 'embedded', 'dot', 'concatenate']:

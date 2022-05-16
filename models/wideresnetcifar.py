@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from models.non_local import NLBlockND
+from torchsummary import summary
+
 
 
 class BasicBlock(nn.Module):
@@ -49,13 +51,13 @@ class NetworkBlock(nn.Module):
             layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
         return nn.Sequential(*layers)
     
-    def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
+    def _make_layer2(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
         layers = []
         for i in range(int(nb_layers)):
             layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
             
-        layers.append(NLBlockND(in_channels=planes*4, dimension = 2, bn_layer=True))
-        layers.append(block(self.inplanes, planes))
+        layers.append(NLBlockND(in_channels=out_planes, dimension = 2, bn_layer=True))
+        layers.append(block(out_planes, out_planes, stride = 1))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -76,7 +78,7 @@ class WideResNet(nn.Module):
         # 1st sub-block
         self.sub_block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
         # 2nd block
-        self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate)
+        self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate, use_denoise=True)
         # 3rd block
         self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
         # global average pooling and classifier
@@ -107,3 +109,8 @@ class WideResNet(nn.Module):
         x4 = self.flatten(x4)
         logits = self.fc(x4)
         return (feature, x4, logits)
+
+if __name__ == '__main__':
+    x = torch.rand(5,3,256,256)
+    model = WideResNet()
+    print((summary(model, (3, 32, 32), depth = 3, col_names=["kernel_size","input_size",  "output_size", "mult_adds"])))
