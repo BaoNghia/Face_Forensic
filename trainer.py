@@ -27,7 +27,7 @@ def train_epoch_multi(
             inputs, targets = inputs.to(device), targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            adv_inputs = attacker.perturb_PGD(inputs, targets)
+            adv_inputs = attacker.perturb_TRADES(inputs, targets)
             
             ## zero the gradient beforehand
             model_robust.train()
@@ -87,8 +87,8 @@ def train_epoch(
             inputs, targets = inputs.to(device), targets.to(device)
             ## generate adversarial_sample
             optimizer.zero_grad()
-            # inputs_adv = attacker.perturb_TRADES(inputs, targets)
-            inputs_adv = attacker.perturb_PGD(inputs, targets)
+            inputs_adv = attacker.perturb_TRADES(inputs, targets)
+            # inputs_adv = attacker.perturb_PGD(inputs, targets)
             ## zero the gradient beforehand
             model_robust.train()
             optimizer.zero_grad()
@@ -174,7 +174,7 @@ def valid_adv_epoch(
             model_robust.eval()
             for batch_idx, (inputs, targets) in pbar:
                 inputs, targets = inputs.to(device), targets.to(device)
-                adv_inputs = attacker.perturb_PGD(inputs, targets)
+                adv_inputs = attacker.perturb_TRADES(inputs, targets)
                 _,_, outputs = model_robust(inputs)
 
                 loss = criterion_ori(outputs, targets)

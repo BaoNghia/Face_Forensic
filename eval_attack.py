@@ -1,15 +1,15 @@
 import os
+import torch
 import argparse
 import pandas as pd
-import torch
+from tqdm import tqdm
 import torch.nn as nn
 import torch.utils.data as data
 from torch.autograd import Variable
 from data_loader import transforms as mytransforms
 from utils.general import yaml_loader, get_attr_by_name, model_loader
 from autoattack.autoattack import AutoAttack
-from tqdm import tqdm
-
+from data_loader.cifar_dataloader import cifar10_dataset, cifar100_dataset
 
 
 def _pgd_whitebox(model, X, y, adversary):
@@ -40,14 +40,13 @@ def eval_adv_test(model, device, test_loader, adverary):
             natural_err_total += err_natural
             pbar.set_postfix(nat = 1 - (err_natural/y.size(0)).cpu().detach().numpy(), \
                 robust = 1 - (err_robust/y.size(0)).cpu().detach().numpy())
-    if os.path.exists(log_fible):
+    if os.path.exists(log_file):
         open(log_file).write("robust_err_total: " + str(robust_err_total)+ "\n")
         open(log_file).write("natural_err_total: " + str(natural_err_total)+ "\n")
     else:
         with open(log_file, 'w') as f:
             f.write("robust_err_total: " + str(robust_err_total)+ "\n")
             f.write("natural_err_total: " + str(natural_err_total)+ "\n")
-
 
 
 if __name__ == "__main__":
@@ -69,22 +68,28 @@ if __name__ == "__main__":
     # device = torch.device("cpu")
 
     all_model = model_loader(cfg)
-    test_model = all_model['model_teacher']
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    test_model.load_state_dict(checkpoint['state_dict'])
+    test_model = all_model['model_robust']
+    try:
+        test_model.load_state_dict(checkpoint['state_dict'])
+    except:
+        test_model = nn.DataParallel(test_model).to(device)
+        test_model.load_state_dict(checkpoint['state_dict'])
     test_model = test_model.to(device)
     test_model.eval()
 
     adversarial_cfg = cfg.get("adversarial")
     norm = 'Linf' if adversarial_cfg['norm'] == "np.inf" else f"L{adversarial_cfg['norm']}"
     epsilon = adversarial_cfg['epsilon']
-    adversary = AutoAttack(test_model, 
-                            norm = norm, 
-                            eps = epsilon,
-                            version = args.version,
-                            device = device, 
-                            log_path = log_file,
-                            verbose = False, )
+    adversary = AutoAttack(
+        test_model, 
+        norm = norm, 
+        eps = epsilon,
+        version = args.version,
+        device = device, 
+        log_path = log_file,
+        verbose = True, 
+    )
     adversary.seed = 0
     # example of custom version
     if args.version == 'custom':
