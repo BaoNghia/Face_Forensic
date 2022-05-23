@@ -40,7 +40,7 @@ def eval_adv_test(model, device, test_loader, adverary):
             natural_err_total += err_natural
             pbar.set_postfix(nat = 1 - (err_natural/y.size(0)).cpu().detach().numpy(), \
                 robust = 1 - (err_robust/y.size(0)).cpu().detach().numpy())
-    if os.path.exists(log_file):
+    if os.path.exists(log_fible):
         open(log_file).write("robust_err_total: " + str(robust_err_total)+ "\n")
         open(log_file).write("natural_err_total: " + str(natural_err_total)+ "\n")
     else:
@@ -52,12 +52,12 @@ def eval_adv_test(model, device, test_loader, adverary):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='NA')
-    parser.add_argument('-cfg', '--configure', default='cfgs/tense_teacher_fl.yaml', help='YAML file')
+    parser.add_argument('-cfg', '--configure', default='cfgs/tense_cifar10_multi.yaml', help='YAML file')
     parser.add_argument('-ckpt', '--checkpoint', default=None, help = 'checkpoint path')
     parser.add_argument('--version', type=str, default='standard')
     args = parser.parse_args()
     checkpoint_path = args.checkpoint
-    checkpoint_path = 'logs/Face_Forensic_teacher/2022-02-28-02h10-fl_6labels/_best.ckpt'
+    checkpoint_path = 'logs/CIFAR10_multi/2022-05-16-09h17/robust_last.ckpt'
     log_file = os.path.join("/".join(checkpoint_path.split("/")[:-1]), "eval_log.txt")
     print("Testing process beginning here....")
     
@@ -92,12 +92,11 @@ if __name__ == "__main__":
         adversary.apgd.n_restarts = 2
         adversary.fab.n_restarts = 2
 
-    test_csv = cfg["data"]["test_csv_name"]
-    test_set = pd.read_csv(test_csv)
-    batch_size = cfg['data']['batch_size']
-    # Get Custom Dataset inherit from torch.utils.data.Dataset
-    dataset, _, _ = get_attr_by_name(cfg['data']['data.class'])
-    test_set = dataset(test_set, transform = mytransforms.test_transform)
-    test_loader = data.DataLoader(test_set, batch_size=batch_size, num_workers=2, shuffle=False)
-    eval_adv_test(test_model, device, test_loader, adversary)
 
+    # Create dataset
+    batch_size = 64
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
+    trainset, testset = cifar10_dataset(cfg)
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, **kwargs)
+    eval_adv_test(test_model, device, test_loader, adversary)
