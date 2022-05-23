@@ -166,7 +166,7 @@ class LBGATLoss(nn.Module):
         self.mse = nn.MSELoss()
         self.fl = FocalLoss(alpha = weight)
         self.ce = nn.CrossEntropyLoss()
-        self.triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
+        self.triplet_loss = nn.TripletMarginWithDistanceLoss(distance_function=nn.PairwiseDistance())
 
     
     def forward(self, out_adv, out_natural, out_neg, out_orig, y):

@@ -93,11 +93,11 @@ def adjust_learning_rate(optimizer, epoch, init_lr):
     lr = init_lr
     if epoch==0:
        lr=0.02
-    if epoch >= 55:
+    if epoch >= 76:
         lr = init_lr * 0.1
-    if epoch >= 75:
+    if epoch >= 91:
         lr = init_lr * 0.01
-    if epoch >= 90:
+    if epoch >= 101:
         lr = init_lr * 0.001
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
